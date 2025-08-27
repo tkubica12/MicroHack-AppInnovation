@@ -32,3 +32,24 @@ Next potential enhancements:
 - Persist a `failed_images.json` with error metadata for audit.
 - Align `.env` BATCH_SIZE with default or read it explicitly to avoid confusion.
 - Add simple tests under `tests/` for: category generation shape; item batch shape; missing image pruning logic.
+
+### 2025-08-27 (later)
+Added initial .NET Blazor Server application (`dotnet/`):
+- net9.0 Blazor Server app with EF Core SqlServer; automatic `EnsureCreated` on startup.
+- Environment variable overrides (`SQL_CONNECTION_STRING`, `SEED_DATA_PATH`, `IMAGE_ROOT_PATH`, `SKIP_STARTUP_IMPORT`).
+- Repository + service layer (`FigureRepository`, `CategoryRepository`, `FigureCatalogService`).
+- Startup hosted service to import seed data when DB empty.
+- Import page (`/Import`) implemented as Razor Page for file upload of `catalog.json` (idempotent insert-only for new figure IDs).
+- Static image serving endpoint `/images/{file}` backed by configurable root path.
+- Basic UI: list, search, category filter, detail view.
+- README with run instructions.
+
+Deferred (documented for future): blob image store, telemetry.
+
+#### 2025-08-27 (decision: keep simplicity)
+- Reverted migration setup back to `EnsureCreated` to avoid external tooling steps.
+- Removed Tools package & design-time factory; migrations deferred until schema changes justify complexity.
+
+#### 2025-08-27 (import simplification)
+- Removed manual Import page and button; startup import now always runs (idempotent) without SKIP/FORCE flags.
+- Startup service logs only total parsed + newly added.

@@ -1,0 +1,38 @@
+@page "/figure/{Id}"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
+@inject FigureCatalogService Catalog
+@inject NavigationManager Nav
+
+
+@if (loading)
+{
+    <p>Loading...</p>
+}
+else if (figure is null)
+{
+    <p>Figure not found.</p>
+}
+else
+{
+    <h3>@figure.Name</h3>
+    <p><em>@figure.Category?.Name</em></p>
+    <img src="/images/@figure.ImageFile" alt="@figure.Name" style="max-width:256px" />
+    <p>@figure.Description</p>
+    <button class="btn" @onclick="NavigateBack">Back</button>
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+    private Models.LegoFigure? figure;
+    private bool loading = true;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        loading = true;
+        figure = await Catalog.GetAsync(Id, CancellationToken.None);
+        loading = false;
+    }
+
+    private void NavigateBack() => Nav.NavigateTo("/");
+}

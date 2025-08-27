@@ -12,3 +12,43 @@ dataGenerator/.env.*
 *.log
 logs/
 
+# .NET / Visual Studio
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vcxproj.*
+.vs/
+TestResult*/
+[Tt]est[Rr]esult*/
+*.VisualState.xml
+*.cache
+*.ide
+*.orig
+*.rsuser
+
+# Build artifacts
+artifacts/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+*.nuget.props
+*.nuget.targets
+
+# Rider / JetBrains
+.idea/
+
+# Coverage
+coverage*/
+*.coverage
+*.coveragexml
+lcov.info
+
+# Logs (dotnet)
+*.trx
+
+

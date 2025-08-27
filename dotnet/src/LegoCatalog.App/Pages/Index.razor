@@ -1,0 +1,66 @@
+@page "/"
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
+@inject FigureCatalogService Catalog
+@inject NavigationManager Nav
+
+
+<h3>Lego Catalog</h3>
+
+<div class="filters">
+    <input placeholder="Search" @bind="search" @bind:event="oninput" />
+    <select @bind="selectedCategory">
+        <option value="">All Categories</option>
+        @foreach (var c in categories)
+        {
+            <option value="@c.Slug">@c.Name</option>
+        }
+    </select>
+    <button class="btn" @onclick="ApplyFilters">Apply</button>
+</div>
+
+@if (figures is null)
+{
+    <p>Loading...</p>
+}
+else if (figures.Count == 0)
+{
+    <p>No figures found.</p>
+}
+else
+{
+    <div class="grid">
+        @foreach (var f in figures)
+        {
+            <div class="card" @onclick="() => NavigateToFigure(f.Id)">
+                <img src="@ImageUrl(f.ImageFile)" alt="@f.Name" />
+                <div class="title">@f.Name</div>
+                <div class="category">@f.Category?.Name</div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private string? search;
+    private string? selectedCategory;
+    private List<Models.Category> categories = new();
+    private IReadOnlyList<Models.LegoFigure>? figures;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await Catalog.CategoriesAsync(CancellationToken.None);
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        figures = await Catalog.ListAsync(selectedCategory, search, CancellationToken.None);
+        StateHasChanged();
+    }
+
+    private Task ApplyFilters() => LoadAsync();
+
+    private string ImageUrl(string file) => $"/images/{file}";
+    private void NavigateToFigure(string id) => Nav.NavigateTo($"/figure/{id}");
+}
