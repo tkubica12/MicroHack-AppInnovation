@@ -1,0 +1,14 @@
+
+# Python / uv
+__pycache__/
+.venv/
+
+# Environment files
+.env
+dataGenerator/.env
+dataGenerator/.env.*
+
+# Logs
+*.log
+logs/
+
