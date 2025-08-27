@@ -5,38 +5,61 @@
 @inject NavigationManager Nav
 
 
-<h3>Lego Catalog</h3>
-
-<div class="filters">
-    <input placeholder="Search" @bind="search" @bind:event="oninput" />
-    <select @bind="selectedCategory">
-        <option value="">All Categories</option>
-        @foreach (var c in categories)
-        {
-            <option value="@c.Slug">@c.Name</option>
-        }
-    </select>
-    <button class="btn" @onclick="ApplyFilters">Apply</button>
+<div class="page-head">
+    <h1 class="page-title">Lego Catalog</h1>
+    <p class="page-sub">Browse generated minifigures. Use search + category filter to narrow results.</p>
 </div>
+
+<form class="toolbar" @onsubmit="ApplyFilters">
+    <div class="field-group">
+        <input class="text-input" placeholder="Search names & description" @bind="search" @bind:event="oninput" aria-label="Search figures" />
+    </div>
+    <div class="field-group">
+        <select class="select" @bind="selectedCategory" aria-label="Filter by category">
+            <option value="">All Categories</option>
+            @foreach (var c in categories)
+            {
+                <option value="@c.Slug">@c.Name</option>
+            }
+        </select>
+    </div>
+    <div class="field-group">
+        <button class="btn primary" type="submit">Apply</button>
+        <button class="btn ghost" type="button" @onclick="ResetFilters" disabled="@(!CanReset)">Reset</button>
+    </div>
+</form>
 
 @if (figures is null)
 {
-    <p>Loading...</p>
+    <div class="grid skeletons">
+        @for (var i = 0; i < 12; i++)
+        {
+            <div class="card skeleton">
+                <div class="thumb"></div>
+                <div class="line short"></div>
+                <div class="line tiny"></div>
+            </div>
+        }
+    </div>
 }
 else if (figures.Count == 0)
 {
-    <p>No figures found.</p>
+    <div class="empty-state">
+        <p>No figures match your filters.</p>
+    </div>
 }
 else
 {
-    <div class="grid">
+    <div class="grid" role="list" aria-label="Figures">
         @foreach (var f in figures)
         {
-            <div class="card" @onclick="() => NavigateToFigure(f.Id)">
-                <img src="@ImageUrl(f.ImageFile)" alt="@f.Name" />
-                <div class="title">@f.Name</div>
-                <div class="category">@f.Category?.Name</div>
-            </div>
+            <article class="card figure-card" role="listitem" @onclick="() => NavigateToFigure(f.Id)" tabindex="0" @onkeydown="(e)=>OnCardKeyDown(e,f.Id)">
+                <div class="thumb-wrapper">
+                    <img src="@ImageUrl(f.ImageFile)" alt="@f.Name" loading="lazy" />
+                </div>
+                <h2 class="card-title" title="@f.Name">@f.Name</h2>
+                <div class="badge">@f.Category?.Name</div>
+            </article>
         }
     </div>
 }
@@ -60,6 +83,19 @@ else
     }
 
     private Task ApplyFilters() => LoadAsync();
+    private bool CanReset => !string.IsNullOrWhiteSpace(search) || !string.IsNullOrWhiteSpace(selectedCategory);
+    private async Task ResetFilters()
+    {
+        search = null; selectedCategory = null; await LoadAsync();
+    }
+
+    private void OnCardKeyDown(KeyboardEventArgs e, string id)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            NavigateToFigure(id);
+        }
+    }
 
     private string ImageUrl(string file) => $"/images/{file}";
     private void NavigateToFigure(string id) => Nav.NavigateTo($"/figure/{id}");

@@ -53,3 +53,14 @@ Deferred (documented for future): blob image store, telemetry.
 #### 2025-08-27 (import simplification)
 - Removed manual Import page and button; startup import now always runs (idempotent) without SKIP/FORCE flags.
 - Startup service logs only total parsed + newly added.
+
+### 2025-08-27 (UI modernization pass)
+- Replaced simplistic top bar with sticky header, navigation using `NavLink`, GitHub link, and theme toggle.
+- Later same day: removed brand/logo & navigation links (single-page app) keeping only theme toggle + GitHub link in compact header.
+- Added dark/light theme with persisted preference via localStorage and CSS custom properties.
+- Introduced modern card grid with hover elevation, skeleton loading placeholders, responsive layout, and accessible keyboard interaction.
+- Enhanced figure detail page layout (two-column responsive) and badge styles.
+- Added Inter font, gradient brand text, refined buttons (primary/ghost) and toolbar styling.
+- Implemented reset filters, improved empty state, and focus navigation (updated selector to `h1,h2,h3`).
+- Updated CSS with light mode fallback, reduced-motion support, and improved scrollbar styling.
+ - Removed obsolete Import navigation (automatic startup import only) and associated Razor Page.

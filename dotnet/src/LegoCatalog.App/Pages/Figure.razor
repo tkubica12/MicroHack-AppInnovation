@@ -15,11 +15,17 @@ else if (figure is null)
 }
 else
 {
-    <h3>@figure.Name</h3>
-    <p><em>@figure.Category?.Name</em></p>
-    <img src="/images/@figure.ImageFile" alt="@figure.Name" style="max-width:256px" />
-    <p>@figure.Description</p>
-    <button class="btn" @onclick="NavigateBack">Back</button>
+    <div class="figure-detail">
+        <div class="media"><img src="/images/@figure.ImageFile" alt="@figure.Name" loading="lazy" /></div>
+        <div class="info">
+            <h1>@figure.Name</h1>
+            <div class="badge large">@figure.Category?.Name</div>
+            <p class="description">@figure.Description</p>
+            <div class="actions">
+                <button class="btn" @onclick="NavigateBack">← Back</button>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
