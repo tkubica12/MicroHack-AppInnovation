@@ -1,8 +1,8 @@
 ## -----------------------------------------------------------------------------
 ## Configuration (edit values here as needed; no script parameters)
 ## -----------------------------------------------------------------------------
-$RepoUrl        = "https://github.com/tkubica12/MicroHack-AppInnovation.git"
-$Branch         = "main"
+$RepoUrl        = "https://github.com/tkubica12/MicroHack-AppInnovation.git"  # (legacy) not used when using zip
+$Branch         = "main"  # (legacy) not used when using zip
 $InstallRoot    = "C:\Apps\LegoCatalog"
 $ServiceName    = "LegoCatalog"
 $SqlInstanceName= "SQLEXPRESS"
@@ -57,39 +57,38 @@ Write-Info "Ensuring package manager (Chocolatey) is available"
 Ensure-Choco
 
 # ----------------------------------------------------------------------------------
-# Git Installation
+# Source Acquisition (Zip download instead of Git)
 # ----------------------------------------------------------------------------------
+Write-Info "Acquiring application sources (zip download)"
+$zipUrl  = 'https://github.com/tkubica12/MicroHack-AppInnovation/archive/refs/heads/main.zip'
+$zipFile = Join-Path $tempDir 'source.zip'
+if (Test-Path $zipFile) { Remove-Item $zipFile -Force }
+try {
+  Write-Info "Downloading archive from $zipUrl"
+  Invoke-WebRequest -Uri $zipUrl -OutFile $zipFile -UseBasicParsing
+} catch { throw "Failed to download source zip: $($_.Exception.Message)" }
+if (-not (Test-Path $zipFile)) { throw "Source zip missing after download." }
+try { Unblock-File -Path $zipFile } catch { Write-Warn "Unblock-File zip failed (continuing): $($_.Exception.Message)" }
 
-Write-Info "Ensuring Git is installed (direct download)"
-if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
-  # Simple hardcoded Git for Windows installer URL (update version manually when needed)
-  $gitVersion = '2.46.0'
-  $gitInstallerUrl = "https://github.com/git-for-windows/git/releases/download/v$gitVersion.windows.1/Git-$gitVersion-64-bit.exe"
-  $gitInstaller = Join-Path $tempDir "git-$gitVersion-64-bit.exe"
-  Write-Info "Downloading Git $gitVersion from $gitInstallerUrl"
-  try {
-    Invoke-WebRequest -Uri $gitInstallerUrl -OutFile $gitInstaller -UseBasicParsing
-  } catch { throw "Failed to download Git installer: $($_.Exception.Message)" }
+# Extract
+$extractRoot = Join-Path $tempDir 'extract'
+if (Test-Path $extractRoot) { Remove-Item $extractRoot -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
+Expand-Archive -Path $zipFile -DestinationPath $extractRoot -Force
+$extractedFolder = Get-ChildItem -Directory -Path $extractRoot | Select-Object -First 1
+if (-not $extractedFolder) { throw "Could not find extracted folder in $extractRoot" }
 
-  if (-not (Test-Path $gitInstaller)) { throw "Git installer file missing after download." }
-
-  Write-Info "Running silent Git installer"
-  $gitArgs = '/VERYSILENT','/NORESTART','/SP-'
-  $p = Start-Process -FilePath $gitInstaller -ArgumentList $gitArgs -PassThru -Wait -NoNewWindow
-  if ($p.ExitCode -ne 0) { throw "Git installer exited with code $($p.ExitCode)" }
-
-  # Refresh PATH (Git installer usually amends machine PATH)
-  $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
-  if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
-    # Fallback: add typical Git cmd path if not already resolvable
-    $gitCmdPath = 'C:\Program Files\Git\cmd'
-    if (Test-Path $gitCmdPath) { $env:Path += ";$gitCmdPath" }
+Write-Info "Copying sources into $InstallRoot"
+# Copy contents (not the root folder itself) to InstallRoot
+Get-ChildItem -Path $extractedFolder.FullName | ForEach-Object {
+  $targetPath = Join-Path $InstallRoot $_.Name
+  if (Test-Path $targetPath) {
+    if ($_.PSIsContainer) { Remove-Item $targetPath -Recurse -Force }
+    else { Remove-Item $targetPath -Force }
   }
-  if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { throw "Git installation failed (git.exe still not found)." }
-  Write-Info "Git $gitVersion installed successfully"
-} else {
-  Write-Info "Git already present (version: $((git --version) 2>$null))"
+  Copy-Item -Path $_.FullName -Destination $targetPath -Recurse -Force
 }
+Write-Info "Sources ready"
 
 # ----------------------------------------------------------------------------------
 # .NET SDK Installation
@@ -143,39 +142,23 @@ if (-not (Get-Service -Name $instanceServiceName -ErrorAction SilentlyContinue))
 }
 
 # ----------------------------------------------------------------------------------
-# Clone or Update Repository
-# ----------------------------------------------------------------------------------
-$repoFolder = $InstallRoot
-if (Test-Path $repoFolder/.git) {
-  Write-Info "Updating existing repository"
-  Push-Location $repoFolder
-  git fetch --all --prune
-  git checkout $Branch
-  git pull origin $Branch
-  Pop-Location
-} else {
-  Write-Info "Cloning repository"
-  git clone --branch $Branch --depth 1 $RepoUrl $repoFolder
-}
-
-# ----------------------------------------------------------------------------------
 # Desktop Shortcut (manual launch) for 'dotnet run'
 # ----------------------------------------------------------------------------------
-$appProj = Join-Path $repoFolder "dotnet\src\LegoCatalog.App\LegoCatalog.App.csproj"  # corrected path
+$appProj = Join-Path $InstallRoot "dotnet\src\LegoCatalog.App\LegoCatalog.App.csproj" 
 if (-not (Test-Path $appProj)) { throw "Project not found: $appProj" }
 
 $startScript = Join-Path $InstallRoot 'start-app.ps1'
-@"
+@'
 # Auto-generated: runs the LegoCatalog app
 Set-Location "C:\Apps\LegoCatalog\dotnet"
 # Force explicit port
 $env:ASPNETCORE_URLS = "http://localhost:5000"
 # Launch app in background so we can open browser
-Start-Process -FilePath dotnet -ArgumentList 'run --project src/LegoCatalog.App/LegoCatalog.App.csproj' -WorkingDirectory "C:\Apps\LegoCatalog\dotnet"
+Start-Process -FilePath dotnet -ArgumentList "run --project src/LegoCatalog.App/LegoCatalog.App.csproj" -WorkingDirectory "C:\Apps\LegoCatalog\dotnet"
 Write-Host "App starting... opening browser in a moment (http://localhost:5000)"
 Start-Sleep 10
 Start-Process "http://localhost:5000"
-"@ | Set-Content -Path $startScript -Encoding UTF8
+'@ | Set-Content -Path $startScript -Encoding UTF8
 
 Write-Info "Creating desktop shortcut"
 $shell = New-Object -ComObject WScript.Shell
