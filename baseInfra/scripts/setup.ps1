@@ -1,16 +1,3 @@
-<#!
-.SYNOPSIS
-Headless provisioning script for per-user Windows VM (LegoCatalog).
-
-.DESCRIPTION
-Installs prerequisites (Git, .NET SDK 9+), SQL Server Express, clones the repository, publishes the app,
-creates & configures a Windows Service, opens firewall port, and sets required environment variables.
-Designed for manual step‑by‑step testing and later automation via VM Extension.
-
-.NOTES
-Idempotent where practical (re-run updates repo & service). Requires elevated PowerShell session.
-#>
-
 ## -----------------------------------------------------------------------------
 ## Configuration (edit values here as needed; no script parameters)
 ## -----------------------------------------------------------------------------
@@ -21,7 +8,6 @@ $ServiceName    = "LegoCatalog"
 $SqlInstanceName= "SQLEXPRESS"
 $UseSqlAuth     = $false          # Set to $true to enable mixed mode + SA user
 $SqlSaPassword  = ""              # If blank & $UseSqlAuth=$true a random one will be generated
-$AppPort        = 80  # (Unused now; keeping for potential future explicit binding)
 
 $ErrorActionPreference = 'Stop'
 
@@ -33,10 +19,12 @@ function Ensure-Admin {
   }
 }
 
-# Ensure Chocolatey (primary package manager for simplicity on Server editions)
+# ----------------------------------------------------------------------------------
+# Choco Installation
+# ----------------------------------------------------------------------------------
 function Ensure-Choco {
   if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
-    Write-Info "Chocolatey not found – installing (official bootstrap script)"
+  Write-Info "Chocolatey not found - installing (official bootstrap script)"
     Set-ExecutionPolicy Bypass -Scope Process -Force
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
     try {
@@ -68,15 +56,43 @@ New-Item -ItemType Directory -Force -Path $InstallRoot,$publishDir,$tempDir | Ou
 Write-Info "Ensuring package manager (Chocolatey) is available"
 Ensure-Choco
 
-Write-Info "Ensuring Git is installed (via Chocolatey)"
+# ----------------------------------------------------------------------------------
+# Git Installation
+# ----------------------------------------------------------------------------------
+
+Write-Info "Ensuring Git is installed (direct download)"
 if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
-  choco install git --yes --no-progress
+  # Simple hardcoded Git for Windows installer URL (update version manually when needed)
+  $gitVersion = '2.46.0'
+  $gitInstallerUrl = "https://github.com/git-for-windows/git/releases/download/v$gitVersion.windows.1/Git-$gitVersion-64-bit.exe"
+  $gitInstaller = Join-Path $tempDir "git-$gitVersion-64-bit.exe"
+  Write-Info "Downloading Git $gitVersion from $gitInstallerUrl"
+  try {
+    Invoke-WebRequest -Uri $gitInstallerUrl -OutFile $gitInstaller -UseBasicParsing
+  } catch { throw "Failed to download Git installer: $($_.Exception.Message)" }
+
+  if (-not (Test-Path $gitInstaller)) { throw "Git installer file missing after download." }
+
+  Write-Info "Running silent Git installer"
+  $gitArgs = '/VERYSILENT','/NORESTART','/SP-'
+  $p = Start-Process -FilePath $gitInstaller -ArgumentList $gitArgs -PassThru -Wait -NoNewWindow
+  if ($p.ExitCode -ne 0) { throw "Git installer exited with code $($p.ExitCode)" }
+
+  # Refresh PATH (Git installer usually amends machine PATH)
   $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
-  if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { throw "Git installation failed via Chocolatey." }
+  if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) {
+    # Fallback: add typical Git cmd path if not already resolvable
+    $gitCmdPath = 'C:\Program Files\Git\cmd'
+    if (Test-Path $gitCmdPath) { $env:Path += ";$gitCmdPath" }
+  }
+  if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { throw "Git installation failed (git.exe still not found)." }
+  Write-Info "Git $gitVersion installed successfully"
+} else {
+  Write-Info "Git already present (version: $((git --version) 2>$null))"
 }
 
 # ----------------------------------------------------------------------------------
-# .NET SDK Installation (exact pin via Chocolatey) – require 8.0.413 only (simplified)
+# .NET SDK Installation
 # ----------------------------------------------------------------------------------
 $requiredSdk = '8.0.413'
 

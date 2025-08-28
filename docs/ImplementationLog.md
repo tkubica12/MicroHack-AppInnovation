@@ -44,6 +44,8 @@
 ### 2025-08-28 (Infrastructure - desktop shortcut & browser launch)
 - Replaced scheduled task approach with creation of desktop shortcut invoking `start-app.ps1`.
 - `start-app.ps1` now sets ASPNETCORE_URLS to http://localhost:5000, starts the app in background, and opens default browser to that URL after short delay.
+### 2025-08-28 (Infrastructure - VM Custom Script Extension)
+- Added Custom Script Extension to `workload.bicep` executing `setup.ps1` from GitHub URL during VM provisioning (installs dependencies, creates desktop shortcut & browser launch script).
 ## Implementation Log
 
 ### 2025-08-27

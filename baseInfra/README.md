@@ -70,3 +70,28 @@ This performs a clean teardown of all per‑user resource groups & their content
 
 ---
 Add future infra components by extending `userInfra.bicep` (new modules) or enhancing `workload.bicep` so each user environment stays self‑contained.
+
+## Connect to a VM and run the sample app
+Each per‑user environment provisions:
+- A Windows Server VM (`vm-user<NNN>`)
+- Azure Bastion (using the shared Public IP) for secure RDP in the portal
+- A Custom Script Extension that installs Git, .NET SDK 8.0.413, SQL Express, clones this repo, and creates a desktop shortcut to run the app
+
+### Steps
+1. In the Azure Portal open the resource group `rg-user<NNN>` you want to use.
+2. Open the Bastion resource `bastion-user<NNN>` (or use the Bastion connect button from the VM blade).
+3. Click "Connect" (RDP over Bastion) and when prompted use:
+	- Username: `azureuser`
+	- Password: `Azure12345678`
+4. Once the desktop session loads you should see a shortcut named **LegoCatalog App**.
+5. Double‑click the shortcut. It will:
+	- Launch a PowerShell window
+	- Start the app with `dotnet run`
+	- Open your default browser to `http://localhost:5000` (give it a few seconds)
+
+If the browser does not open automatically, manually navigate to `http://localhost:5000` in the VM.
+
+### Notes / Troubleshooting
+- The provisioning script runs only once (via Custom Script Extension). If you change the script and want to reapply, redeploy the extension (update its settings or remove & redeploy) or run `C:\Apps\LegoCatalog\start-app.ps1` manually.
+- The provided credentials are for demo only; rotate them for anything beyond a lab scenario.
+- Bastion allows RDP only from within the virtual network; direct public RDP is blocked by NSG design.

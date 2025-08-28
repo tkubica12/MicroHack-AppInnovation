@@ -27,6 +27,8 @@ var bastionSubnetName = 'AzureBastionSubnet'
 var nsgName = 'nsg-user${padded}'
 var nicName = 'nic-user${padded}'
 var vmName = 'vm-user${padded}'
+// URL of provisioning script to execute via Custom Script Extension
+var setupScriptUrl = 'https://github.com/tkubica12/MicroHack-AppInnovation/raw/refs/heads/main/baseInfra/scripts/setup.ps1'
 
 // Derived address space now /22 giving room for multiple /24 segments: 10.X.0.0 - 10.X.3.255
 var derivedVnetCidr = '10.${userIndex}.0.0/22'
@@ -187,6 +189,23 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
       ]
     }
   }
+}
+
+// Custom Script Extension to run provisioning script (creates desktop shortcut etc.)
+resource vmSetup 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
+  name: '${vm.name}/setup'
+  location: location
+  properties: {
+    publisher: 'Microsoft.Compute'
+    type: 'CustomScriptExtension'
+    typeHandlerVersion: '1.10'
+    autoUpgradeMinorVersion: true
+    protectedSettings: {
+      fileUris: [ setupScriptUrl ]
+      commandToExecute: 'powershell -ExecutionPolicy Bypass -File setup.ps1'
+    }
+  }
+  dependsOn: [ vm ]
 }
 
 output publicIpName string = pipName
