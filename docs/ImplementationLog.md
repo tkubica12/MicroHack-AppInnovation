@@ -1,3 +1,49 @@
+### 2025-08-28 (Infrastructure - network redesign with Bastion)
+- Adjusted per-user VNet to /22 CIDR with dedicated `vms` /24 and `AzureBastionSubnet` /26.
+- Removed public IP from VM NIC; Standard Public IP now attached to Azure Bastion (Basic SKU) for secure RDP.
+- Replaced permissive NSG rules with single rule allowing RDP only from VirtualNetwork (Bastion access path).
+- Added Bastion host deployment and set Public IP SKU to Standard to satisfy Bastion requirements.
+### 2025-08-28 (Infrastructure - inline Public IP)
+- Removed separate `pip.bicep` module; inlined Public IP resource into `workload.bicep` (Standard SKU Static) simplifying module graph.
+- Updated Bastion host to reference inlined `publicIp` resource id directly.
+- README updated (removed module reference, clarified NSG restriction & subnet layout).
+### 2025-08-28 (Infrastructure - VM provisioning script)
+- Added `baseInfra/scripts/setup.ps1` headless provisioning script (Git, .NET SDK, SQL Express, clone repo, publish app, create Windows Service, firewall rule, env vars). Intended for later Custom Script Extension integration.
+### 2025-08-28 (Infrastructure - provisioning script simplification)
+- Removed parameters from `setup.ps1`; replaced with top-of-file configuration block for simpler manual tweaking during early testing phase.
+### 2025-08-28 (Infrastructure - Git install fallback)
+- Enhanced `setup.ps1` Git installation: tries winget, then Chocolatey, then direct silent installer download (pinned version) for Windows Server environments lacking winget.
+### 2025-08-28 (Infrastructure - .NET install robustness)
+- Improved .NET SDK detection & installation in `setup.ps1` (graceful failure handling, removed invalid -Verbose switch, added PATH refresh and post-install verification).
+### 2025-08-28 (Infrastructure - SQL Express arg quoting fix)
+- Corrected quoting for `/SQLSVCACCOUNT` in SQL Express silent install args to avoid PowerShell parser error; added log echo of arguments.
+### 2025-08-28 (Infrastructure - SQL Express installer robustness)
+- Added multi-URL download strategy, bootstrap detection, two-step media download, improved silent install args & timeout loop in `setup.ps1`.
+### 2025-08-28 (Infrastructure - SQL Express bootstrap simplification)
+- Removed two-step ACTION=Download path; bootstrap now invoked directly with install args and exit code checked.
+### 2025-08-28 (Infrastructure - SQL Express extraction install)
+- Adjusted `setup.ps1` to always self-extract installer then run inner setup.exe with minimal supported flags (resolving unrecognized settings errors).
+### 2025-08-28 (Infrastructure - SQL Express multi-strategy)
+- Replaced extraction approach with tiered install (winget -> Chocolatey -> manual bootstrap) plus extended polling.
+### 2025-08-28 (Infrastructure - provisioning simplification - Chocolatey baseline)
+- Simplified `setup.ps1` by ensuring Chocolatey is installed first, then using it uniformly for Git, .NET SDK, and SQL Server Express (removed multi-strategy logic & manual bootstrap fallback to reduce complexity on Server images lacking winget).
+### 2025-08-28 (Infrastructure - service creation diagnostics)
+- Added verbose diagnostics & error handling around Windows Service creation in `setup.ps1` (captures sc.exe output, validates existence, fails fast if missing).
+### 2025-08-28 (Infrastructure - service creation fallback & self-contained option)
+- Added fallback using `New-Service` if `sc.exe create` doesn't materialize service; introduced optional self-contained publish mode to simplify service binPath.
+### 2025-08-28 (Infrastructure - pin .NET SDK 8.0.0)
+- Modified provisioning script to install exact .NET 8.0.0 (SDK 8.0.100) via dotnet-install script instead of major version heuristic.
+### 2025-08-28 (Infrastructure - switch .NET pin to Chocolatey)
+- Adjusted provisioning script to use Chocolatey for pinned .NET 8.0 SDK installation (tries multiple package IDs, removes dotnet-install script usage as per requirement).
+### 2025-08-28 (Infrastructure - exact .NET SDK 8.0.413 pin)
+- Updated provisioning script to require and install only .NET SDK 8.0.413 via Chocolatey (fails fast if not available or mismatched).
+### 2025-08-28 (Infrastructure - simplify .NET 8.0.413 install)
+- Reduced .NET SDK install logic to a single Chocolatey install attempt (removed multi-package loop, added concise validation).
+### 2025-08-28 (Infrastructure - simplify runtime startup)
+- Removed service / publish / env var configuration from provisioning script; added startup scheduled task executing `dotnet run` in repo directory for auto-start after reboot.
+### 2025-08-28 (Infrastructure - desktop shortcut & browser launch)
+- Replaced scheduled task approach with creation of desktop shortcut invoking `start-app.ps1`.
+- `start-app.ps1` now sets ASPNETCORE_URLS to http://localhost:5000, starts the app in background, and opens default browser to that URL after short delay.
 ## Implementation Log
 
 ### 2025-08-27
@@ -64,3 +110,26 @@ Deferred (documented for future): blob image store, telemetry.
 - Implemented reset filters, improved empty state, and focus navigation (updated selector to `h1,h2,h3`).
 - Updated CSS with light mode fallback, reduced-motion support, and improved scrollbar styling.
  - Removed obsolete Import navigation (automatic startup import only) and associated Razor Page.
+
+### 2025-08-27 (Infrastructure - initial Bicep modules)
+- Added base `bicep/` templates: `main.bicep` (subscription loop), `userInfra.bicep` (RG + pip per user), `pip.bicep` (Public IP resource group module).
+- Implemented initial naming convention (later revised) `userNNN-rg` / `userNNN-pip` with zero-padded indices starting at 1.
+- Added Deployment Stack CLI instructions to `baseInfra/README.md` for create/update, what-if, listing, and destroy operations.
+- Chose `westeurope` default location (adjustable via parameter).
+- Future: extend module to include VNET + VM + initialization scripts.
+
+### 2025-08-27 (Infrastructure - naming revision & fix)
+- Updated naming to CAF-style prefix ordering: `rg-userNNN`, `pip-userNNN`.
+- Fixed Bicep BCP144 error by indexing module collection in output comprehension.
+
+### 2025-08-27 (Infrastructure - per-user network + VM)
+- Extended `userInfra.bicep` to provision VNet, Subnet, NSG (RDP/HTTP/HTTPS), NIC, and Windows Server 2022 VM per user.
+- Added parameters for admin credentials, VM size, accelerated networking, and optional custom CIDRs.
+- Updated `main.bicep` to pass secure admin credentials and fixed loop off-by-one (range now 1..n inclusive).
+- README updated with new resource list & CLI examples including credentials.
+
+### 2025-08-28 (Infrastructure - module refactor & lint fixes)
+- Introduced `workload.bicep` (resource group scope) containing PIP, NSG, VNet, NIC, VM.
+- Simplified `userInfra.bicep` to only create RG and call workload module.
+- Addressed Bicep scope errors (BCP037/BCP139) and removed unnecessary dependsOn warnings.
+- Updated README to document new module list.
