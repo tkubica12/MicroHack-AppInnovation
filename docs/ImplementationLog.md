@@ -56,6 +56,17 @@
 - Simplified `Ensure-SqlCmd` to probe only two observed install locations and perform a single winget install attempt, removing multi-fallback complexity for clarity on Server 2025 hosts.
 ### 2025-08-29 (Infrastructure - sqlcmd robustness follow-up)
 - Enhanced `Ensure-SqlCmd` to: verify execution (`sqlcmd -?`), persist discovered directory to Machine PATH, and fall back to classic `Microsoft.SQLServer.CommandLineTools` if modern package present but non-functional.
+### 2025-08-29 (Infrastructure - setup.ps1 winget removal & simplification)
+- Rewrote provisioning script to eliminate `winget` dependency (not available during Custom Script Extension under SYSTEM) using direct downloads:
+	- .NET SDK via `dotnet-install.ps1` channel 8.0
+	- SQL Server 2022 Express bootstrap with silent arguments enabling mixed mode + TCP 1433
+	- Modern `sqlcmd` (go-sqlcmd) GitHub release zip (pinned version 1.7.0)
+- Structured into numbered steps with concise helper functions (Step / Retry / Wait-For) for clarity.
+- Moved configuration constants to a single block at top; removed previous multifallback logic and legacy variable section.
+- Database & login provisioning now performed using SA credential established at install, then tested with application login.
+- Start script generation unchanged in behavior (updated to use new config variables).
+### 2025-08-29 (Infrastructure - persist .NET PATH)
+- Updated `setup.ps1` to append `C:\Program Files\dotnet` to Machine PATH and set `DOTNET_ROOT` so `dotnet` CLI is available after VM reboot (fixes post-restart 'dotnet not found' issue under new sessions / scheduled tasks).
 ## Implementation Log
 
 ### 2025-08-27
