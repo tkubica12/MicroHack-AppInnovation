@@ -1,27 +1,63 @@
 $ProgressPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Stop'
 
-# Install .NET 8
-Write-Host 'Installing .NET 8'
+function Write-Section($msg) { Write-Host "`n==== $msg ====`n" }
+
+function Wait-ForCondition {
+    param(
+        [Parameter(Mandatory)] [scriptblock]$Condition,
+        [Parameter(Mandatory)] [string]$Description,
+        [int]$TimeoutSec = 900,
+        [int]$IntervalSec = 10
+    )
+    $sw = [Diagnostics.Stopwatch]::StartNew()
+    while ($sw.Elapsed.TotalSeconds -lt $TimeoutSec) {
+        try {
+            if (& $Condition) { Write-Host "[OK] $Description"; return }
+        } catch { }
+        Start-Sleep -Seconds $IntervalSec
+    }
+    throw "Timeout waiting for: $Description"
+}
+
+function Invoke-WithRetry {
+    param(
+        [Parameter(Mandatory)] [scriptblock]$Action,
+        [int]$Retries = 10,
+        [int]$DelaySec = 10,
+        [string]$Description = 'operation'
+    )
+    for ($i=1; $i -le $Retries; $i++) {
+        try {
+            & $Action
+            Write-Host "[OK] $Description (attempt $i)"
+            return
+        } catch {
+            Write-Warning "Failed $Description (attempt $i/$Retries): $($_.Exception.Message)"
+            if ($i -eq $Retries) { throw }
+            Start-Sleep -Seconds $DelaySec
+        }
+    }
+}
+
+Write-Section 'Installing .NET 8'
 winget install Microsoft.DotNet.SDK.8 --accept-package-agreements --accept-source-agreements -e --silent 
 
-# Install SQL
-Write-Host 'Installing SQL Server 2022 Express'
+Write-Section 'Installing SQL Server 2022 Express (may take several minutes)'
 winget install --id=Microsoft.SQLServer.2022.Express --accept-package-agreements --accept-source-agreements -e --silent 
 
-# Install SSMS (not required, just for troubleshooting)
-# winget install --id=Microsoft.SQLServerManagementStudio.21 --accept-package-agreements --accept-source-agreements -e --silent 
-
 # Install modern sqlcmd
-Write-Host 'Installing modern sqlcmd'
+Write-Section 'Installing modern sqlcmd & prerequisites'
 winget install sqlcmd --accept-package-agreements --accept-source-agreements -e --silent 
 winget install "Microsoft ODBC Driver 18 for SQL Server" --accept-package-agreements --accept-source-agreements -e --silent
 winget install "Microsoft.VCRedist.2015+.x64" --accept-package-agreements --accept-source-agreements -e --silent
 
-# Add sqlcmd to PATH for current session
+# Add sqlcmd to PATH for current session (hardcoded path kept intentionally)
 $env:PATH += ";C:\Program Files\sqlcmd"
 
-# Registry path for TCP/IP settings
+# Registry path for TCP/IP settings (hardcoded path kept intentionally)
 $tcpRegPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Tcp\IPAll"
+Wait-ForCondition { Test-Path $tcpRegPath } "SQL Server TCP registry path present"
 
 # Enable TCP/IP
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQLServer\SuperSocketNetLib\Tcp" -Name "Enabled" -Value 1
@@ -30,23 +66,21 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQ
 Set-ItemProperty -Path $tcpRegPath -Name "TcpPort" -Value "1433"
 Set-ItemProperty -Path $tcpRegPath -Name "TcpDynamicPorts" -Value ""
 
-# Set registry key to enable mixed mode (SQL + Windows auth)
+# Enable mixed mode
 Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL16.SQLEXPRESS\MSSQLServer" -Name "LoginMode" -Value 2
 
-# Restart SQL Server service to apply changes
-Write-Host 'Restarting SQL Server service'
+Wait-ForCondition { Get-Service -Name "MSSQL`$SQLEXPRESS" -ErrorAction SilentlyContinue } 'SQL Server service registered'
+
+Write-Section 'Restarting SQL Server service'
 Restart-Service -Name "MSSQL`$SQLEXPRESS" -Force
+Wait-ForCondition { (Get-Service -Name "MSSQL`$SQLEXPRESS").Status -eq 'Running' } 'SQL Server service running'
 
-# Wait a bit for the service to come up
-Start-Sleep -Seconds 15
-
-# Test connection to SQL Server
-& sqlcmd -S localhost,1433 -E -Q "SELECT 1" 1>$null 2>$null
-if ($LASTEXITCODE -eq 0) {
-  Write-Host "SQL Server connection test succeeded."
-} else {
-  Write-Warning "SQL Server connection test failed."
+# Test connection to SQL Server with retry
+Invoke-WithRetry -Description 'basic SQL connectivity test' -Retries 30 -DelaySec 10 -Action {
+    & sqlcmd -S localhost,1433 -E -Q "SELECT 1" 1>$null 2>$null
+    if ($LASTEXITCODE -ne 0) { throw 'sqlcmd returned non-zero exit code' }
 }
+Write-Host "SQL Server connection test succeeded."
 
 # Define variables
 $dbName = "LegoCatalog"
@@ -80,10 +114,12 @@ END;
 GO
 "@
 
-# Execute the SQL script
-Write-Host "Creating database '$dbName' and SQL login '$sqlLogin'."
-$sql | sqlcmd -S localhost,1433 -E -b
-if ($LASTEXITCODE -ne 0) { throw "Failed executing provisioning SQL script." }
+# Execute the SQL script with retry
+Write-Host "Creating database '$dbName' and SQL login '$sqlLogin' (retry logic)."
+Invoke-WithRetry -Description 'DB / login provisioning' -Retries 12 -DelaySec 10 -Action {
+    $sql | sqlcmd -S localhost,1433 -E -b
+    if ($LASTEXITCODE -ne 0) { throw "Provisioning script failed with code $LASTEXITCODE" }
+}
 
 $sqlTestQuery = "SELECT name FROM sys.databases WHERE name = '$dbName';"
 $sqlcmdArgs = @(
@@ -112,7 +148,8 @@ Expand-Archive -Path $zipFile -DestinationPath 'C:\' -Force
 
 # Start script
 Write-Host 'Creating start script'
-$connStr = "Server=.localhost;Database=$dbName;User Id=$sqlLogin;Password=$sqlPassword;Encrypt=True;TrustServerCertificate=True"
+# Fixed connection string (removed stray dot, added explicit port)
+$connStr = "Server=localhost,1433;Database=$dbName;User Id=$sqlLogin;Password=$sqlPassword;Encrypt=True;TrustServerCertificate=True"
 
 # Build start script lines explicitly to avoid premature variable expansion inside here-strings
 $startScriptLines = @(
