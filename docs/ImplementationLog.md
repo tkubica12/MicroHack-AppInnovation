@@ -67,6 +67,8 @@
 - Start script generation unchanged in behavior (updated to use new config variables).
 ### 2025-08-29 (Infrastructure - persist .NET PATH)
 - Updated `setup.ps1` to append `C:\Program Files\dotnet` to Machine PATH and set `DOTNET_ROOT` so `dotnet` CLI is available after VM reboot (fixes post-restart 'dotnet not found' issue under new sessions / scheduled tasks).
+### 2025-08-29 (Infrastructure - delayed app auto-start)
+- Added `start-app-delayed.ps1` wrapper (60s sleep) and updated scheduled task in `setup.ps1` to invoke it, mitigating race where first logon occurs before user profile & PATH (with dotnet) are fully initialized.
 ## Implementation Log
 
 ### 2025-08-27

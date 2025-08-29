@@ -195,6 +195,19 @@ $startScriptLines = @(
 $startScriptLines | Set-Content -Path 'C:\start-app.ps1' -Encoding UTF8
 Info 'Start script created at C:\start-app.ps1'
 
+# Wrapper script introducing a startup delay so that, upon first interactive logon,
+# the user profile (and propagated Machine PATH with dotnet) is fully initialized
+# before attempting to run the app. Scheduled Task will invoke this wrapper.
+$delayedWrapper = @(
+    '# Auto-generated delayed start wrapper'
+    'Write-Host "[INFO] Waiting 60 seconds before launching application (profile / PATH stabilization)"'
+    'Start-Sleep -Seconds 60'
+    'Write-Host "[INFO] Launching start-app.ps1"'
+    'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\start-app.ps1"'
+)
+$delayedWrapper | Set-Content -Path 'C:\start-app-delayed.ps1' -Encoding UTF8
+Info 'Delayed wrapper script created at C:\start-app-delayed.ps1'
+
 ###########################################################################
 # 8. Connectivity test using app login
 ###########################################################################
@@ -216,7 +229,8 @@ try { if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
 if (-not $taskExists) {
     try {
         $trigger = New-ScheduledTaskTrigger -AtLogOn
-        $action  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\start-app.ps1"'
+        # Invoke delayed wrapper which waits 60s then launches the actual start script
+        $action  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\start-app-delayed.ps1"'
         $principal = New-ScheduledTaskPrincipal -GroupId 'BUILTIN\\Users' -RunLevel Highest
         Register-ScheduledTask -TaskName $taskName -Trigger $trigger -Action $action -Principal $principal -Description 'Start LegoCatalog app at user logon' | Out-Null
         Info "Scheduled task '$taskName' created (runs for any Users group logon)."
