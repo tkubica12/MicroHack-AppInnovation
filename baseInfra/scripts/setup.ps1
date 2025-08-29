@@ -195,23 +195,43 @@ $startScriptLines = @(
 $startScriptLines | Set-Content -Path 'C:\start-app.ps1' -Encoding UTF8
 Info 'Start script created at C:\start-app.ps1'
 
-# Wrapper script introducing a startup delay so that, upon first interactive logon,
-# the user profile (and propagated Machine PATH with dotnet) is fully initialized
-# before attempting to run the app. Scheduled Task will invoke this wrapper.
-$delayedWrapper = @(
-    '# Auto-generated delayed start wrapper'
-    'Write-Host "[INFO] Waiting 60 seconds before launching application (profile / PATH stabilization)"'
-    'Start-Sleep -Seconds 60'
-    'Write-Host "[INFO] Launching start-app.ps1"'
-    'powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\start-app.ps1"'
-)
-$delayedWrapper | Set-Content -Path 'C:\start-app-delayed.ps1' -Encoding UTF8
-Info 'Delayed wrapper script created at C:\start-app-delayed.ps1'
+###########################################################################
+# 8. Create dev tools install scheduled task (winget after first logon)
+###########################################################################
+Step 8 'Create developer tools install script'
+$devToolsScript = 'C:\dev-tools-install.ps1'
+$devToolsMarker = 'C:\dev-tools-installed.txt'
+$devToolsScriptContent = @'
+Write-Host "[DevTools] Starting developer tools installation"
+if (Test-Path "C:\dev-tools-installed.txt") { Write-Host "[DevTools] Already installed (marker present)."; exit 0 }
+function Install-Pkg {
+    param([string]$Id)
+    Write-Host "[DevTools] Installing $Id"
+    try {
+        winget install --id=$Id -e --accept-package-agreements --accept-source-agreements -h
+        if ($LASTEXITCODE -ne 0) { Write-Warning "[DevTools] winget exit code $LASTEXITCODE for $Id" }
+    } catch { Write-Warning "[DevTools] Exception installing $Id : $($_.Exception.Message)" }
+}
+function Ensure-Winget {
+    if (Get-Command winget -ErrorAction SilentlyContinue) { return }
+    Write-Warning "[DevTools] winget not found; skipping all installs"
+    exit 0
+}
+Ensure-Winget
+Install-Pkg 'Microsoft.VisualStudioCode'
+Install-Pkg 'Microsoft.AzureCLI'
+Install-Pkg 'SUSE.RancherDesktop'
+Install-Pkg 'Microsoft.SQLServerManagementStudio'
+"Installed at: $(Get-Date -Format o)" | Out-File "C:\dev-tools-installed.txt" -Encoding UTF8 -Force
+Write-Host "[DevTools] Installation complete."
+'@
+$devToolsScriptContent | Set-Content -Path $devToolsScript -Encoding UTF8
+Info "Dev tools installer script created at $devToolsScript (run manually after first logon)."
 
 ###########################################################################
-# 8. Connectivity test using app login
+# 9. Connectivity test using app login
 ###########################################################################
-Step 8 'Test app login connectivity'
+Step 9 'Test app login connectivity'
 Retry 'app login connectivity' { 
     & "$SqlCmdInstallDir\sqlcmd.exe" -S $SqlServerInstance -U $AppLogin -P $AppPassword -d $AppDbName -Q "SELECT TOP 1 name FROM sys.tables" -b | Out-Null
     if ($LASTEXITCODE -ne 0) { Fail "App login sqlcmd exit code $LASTEXITCODE" }
@@ -219,43 +239,37 @@ Retry 'app login connectivity' {
 Info 'App login connectivity succeeded.'
 
 ###########################################################################
-# 9. Ensure app launches on interactive user logon
+# 10. Enable WSL features (requires reboot if newly enabled)
 ###########################################################################
-Step 9 'Configure auto-start on user logon'
+Step 10 'Enable WSL features'
+function Ensure-FeatureEnabled {
+    param([string]$FeatureName)
+    $info = & dism /online /Get-FeatureInfo /FeatureName:$FeatureName 2>&1
+    if ($LASTEXITCODE -ne 0) { Warn "Failed to query feature $FeatureName (exit $LASTEXITCODE). Output: $info"; return $false }
+    if ($info -match 'State : Enabled') { Info "Feature $FeatureName already enabled"; return $false }
+    Info "Enabling feature $FeatureName"
+    & dism /online /Enable-Feature /FeatureName:$FeatureName /All /NoRestart | Out-Null
+    $ec = $LASTEXITCODE
+    if ($ec -eq 3010) { Info "Feature $FeatureName enabled (reboot required, code 3010)." }
+    elseif ($ec -ne 0) { Fail "Failed to enable feature $FeatureName (exit $ec)" }
+    if ($ec -eq 3010 -or $ec -eq 0) { return $true }
+    return $false
+}
+$changedWSL  = Ensure-FeatureEnabled -FeatureName 'Microsoft-Windows-Subsystem-Linux'
+$changedVMP  = Ensure-FeatureEnabled -FeatureName 'VirtualMachinePlatform'
+if ($changedWSL -or $changedVMP) { $script:WSLNeedsReboot = $true } else { $script:WSLNeedsReboot = $false }
 
-$taskName = 'LegoAppAutoStart'
-$taskExists = $false
-try { if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) { $taskExists = $true } } catch {}
-if (-not $taskExists) {
-    try {
-        $trigger = New-ScheduledTaskTrigger -AtLogOn
-        # Invoke delayed wrapper which waits 60s then launches the actual start script
-        $action  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\start-app-delayed.ps1"'
-        $principal = New-ScheduledTaskPrincipal -GroupId 'BUILTIN\\Users' -RunLevel Highest
-        Register-ScheduledTask -TaskName $taskName -Trigger $trigger -Action $action -Principal $principal -Description 'Start LegoCatalog app at user logon' | Out-Null
-        Info "Scheduled task '$taskName' created (runs for any Users group logon)."
-    } catch {
-        Warn "Failed to create scheduled task ($($_.Exception.Message)). Will attempt startup folder shortcut fallback."
-    }
-} else { Info "Scheduled task '$taskName' already exists; skipping creation." }
+###########################################################################
+# 11. Schedule reboot if required
+###########################################################################
+if ($script:WSLNeedsReboot) {
+    Step 11 'Schedule reboot to finalize WSL features'
+    Info 'Scheduling reboot in 60 seconds to complete WSL feature activation.'
+    & shutdown.exe /r /t 60 /c "Reboot after enabling WSL features" | Out-Null
+    Write-Host "System will reboot in 60 seconds." -ForegroundColor Yellow
+} else {
+    Info 'No reboot required (WSL features already enabled).'
+}
 
-# Fallback: startup folder shortcut so app starts for interactive sessions even if task failed or lacks rights
-$startupFolder = Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\StartUp'
-if (Test-Path $startupFolder) {
-    $shortcutPath = Join-Path $startupFolder 'Start Lego App.lnk'
-    if (-not (Test-Path $shortcutPath)) {
-        try {
-            $ws = New-Object -ComObject WScript.Shell
-            $sc = $ws.CreateShortcut($shortcutPath)
-            $sc.TargetPath = 'powershell.exe'
-            $sc.Arguments  = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\start-app.ps1"'
-            $sc.WorkingDirectory = 'C:\'
-            $sc.IconLocation = 'powershell.exe,0'
-            $sc.Save()
-            Info 'Startup folder shortcut created.'
-        } catch { Warn "Failed to create startup shortcut: $($_.Exception.Message)" }
-    } else { Info 'Startup folder shortcut already present.' }
-} else { Warn "Startup folder not found: $startupFolder" }
-
-Write-Host "`nAll steps completed successfully." -ForegroundColor Green
+Write-Host "Provisioning script complete." -ForegroundColor Green
 

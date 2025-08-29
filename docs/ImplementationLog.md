@@ -69,6 +69,12 @@
 - Updated `setup.ps1` to append `C:\Program Files\dotnet` to Machine PATH and set `DOTNET_ROOT` so `dotnet` CLI is available after VM reboot (fixes post-restart 'dotnet not found' issue under new sessions / scheduled tasks).
 ### 2025-08-29 (Infrastructure - delayed app auto-start)
 - Added `start-app-delayed.ps1` wrapper (60s sleep) and updated scheduled task in `setup.ps1` to invoke it, mitigating race where first logon occurs before user profile & PATH (with dotnet) are fully initialized.
+### 2025-08-29 (Infrastructure - WSL enablement)
+- `setup.ps1` now always enables `Microsoft-Windows-Subsystem-Linux` and `VirtualMachinePlatform` (idempotent) and schedules a reboot (60s) only if features were newly enabled. Prepares for dev tooling (e.g., Rancher Desktop) requiring WSL.
+### 2025-08-29 (Infrastructure - dev tools post-logon installer)
+- Added Step 8 creating one-time scheduled task `DevToolsInstallOnce` plus `C:\dev-tools-install.ps1` to install VS Code, Azure CLI, Rancher Desktop, and SSMS via winget on first interactive logon; task self-unregisters after success and writes marker file.
+### 2025-08-29 (Infrastructure - simplify startup & dev tools execution)
+- Removed scheduled tasks (auto-start & dev tools). Retained plain scripts `C:\start-app.ps1` and `C:\dev-tools-install.ps1` for manual execution. Eliminated delayed wrapper. DISM 3010 exit code now treated as success requiring reboot.
 ## Implementation Log
 
 ### 2025-08-27

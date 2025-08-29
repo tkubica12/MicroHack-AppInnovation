@@ -15,7 +15,7 @@ param vnetAddressSpace string = ''
 @description('Optional explicit vms subnet CIDR; defaults to first /24 inside derived VNet.')
 param subnetAddressPrefix string = ''
 @description('VM size.')
-param vmSize string = 'Standard_B2als_v2'
+param vmSize string = 'Standard_D2as_v5'
 @description('Enable accelerated networking if size supports it.')
 param enableAcceleratedNetworking bool = false
 
