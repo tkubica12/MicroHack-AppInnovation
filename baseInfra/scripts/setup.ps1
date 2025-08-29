@@ -8,6 +8,10 @@ $ServiceName    = "LegoCatalog"
 $SqlInstanceName= "SQLEXPRESS"
 $UseSqlAuth     = $false          # Set to $true to enable mixed mode + SA user
 $SqlSaPassword  = ""              # If blank & $UseSqlAuth=$true a random one will be generated
+$DatabaseName   = "LegoCatalog"   # Pre-created DB name (aligns with Azure SQL)
+$CreateAppLogin = $false           # When using SQL auth, create dedicated login/user
+$AppDbLoginName   = "lego_app"
+$AppDbLoginPassword = "Azure12345678" 
 
 $ErrorActionPreference = 'Stop'
 
@@ -142,7 +146,7 @@ if (-not (Get-Service -Name $instanceServiceName -ErrorAction SilentlyContinue))
 }
 
 # ----------------------------------------------------------------------------------
-# Desktop Shortcut (manual launch) for 'dotnet run'
+# Shortcut (manual launch) for 'dotnet run'
 # ----------------------------------------------------------------------------------
 $appProj = Join-Path $InstallRoot "dotnet\src\LegoCatalog.App\LegoCatalog.App.csproj" 
 if (-not (Test-Path $appProj)) { throw "Project not found: $appProj" }
@@ -162,7 +166,7 @@ Start-Process "http://localhost:5000"
 
 Write-Info "Creating desktop shortcut (hardcoded azureuser)"
 $shell = New-Object -ComObject WScript.Shell
-$userDesktop = 'C:\Users\azureuser\Desktop'
+$userDesktop = 'C:\'
 if (-not (Test-Path $userDesktop)) {
   Write-Warn "Desktop path $userDesktop not found, creating it"
   New-Item -ItemType Directory -Path $userDesktop -Force | Out-Null
@@ -175,5 +179,34 @@ $sc.WorkingDirectory = "C:\Apps\LegoCatalog\dotnet"
 $sc.WindowStyle = 1
 $sc.IconLocation = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
 $sc.Save()
+
+# ----------------------------------------------------------------------------------
+# Pre-create database and SQL user
+# ----------------------------------------------------------------------------------
+Write-Info "Ensuring application database '$DatabaseName' exists"
+try {
+  if (Get-Command sqlcmd -ErrorAction SilentlyContinue) {
+    sqlcmd -S ".\$SqlInstanceName" -E -Q "IF DB_ID('$DatabaseName') IS NULL BEGIN CREATE DATABASE [$DatabaseName]; PRINT 'Database created'; END ELSE PRINT 'Database already exists';" | Out-Null
+  } else { Write-Warn "sqlcmd not installed; skipping DB create check" }
+} catch { Write-Warn "Database create check failed: $($_.Exception.Message)" }
+
+if ($UseSqlAuth -and $CreateAppLogin) {
+  Write-Info "Ensuring SQL login '$AppDbLoginName' with db_owner on '$DatabaseName'"
+  $escapedPwd = $AppDbLoginPassword.Replace("'","''")
+  $loginSql = @"
+IF NOT EXISTS (SELECT 1 FROM sys.server_principals WHERE name = N'$AppDbLoginName')
+    CREATE LOGIN [$AppDbLoginName] WITH PASSWORD=N'$escapedPwd', CHECK_POLICY=ON;
+IF DB_ID('$DatabaseName') IS NOT NULL BEGIN
+    USE [$DatabaseName];
+    IF NOT EXISTS (SELECT 1 FROM sys.database_principals WHERE name = N'$AppDbLoginName')
+        CREATE USER [$AppDbLoginName] FOR LOGIN [$AppDbLoginName];
+    EXEC sp_addrolemember N'db_owner', N'$AppDbLoginName';
+END
+"@
+  try { sqlcmd -S ".\$SqlInstanceName" -E -Q $loginSql | Out-Null } catch { Write-Warn "Login/user ensure failed: $($_.Exception.Message)" }
+}
+
+# Hint env var for conditional schema creation
+if (-not $env:SKIP_DB_INIT) { $env:SKIP_DB_INIT = '0' }
 
 Write-Info "Provisioning complete (use desktop shortcut to start app)"

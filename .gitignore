@@ -6,7 +6,6 @@ __pycache__/
 # Environment files
 .env
 dataGenerator/.env
-dataGenerator/.env.*
 
 # Logs
 *.log

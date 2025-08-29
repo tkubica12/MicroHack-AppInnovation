@@ -27,11 +27,28 @@ builder.Services.AddHostedService<StartupImportHostedService>();
 
 var app = builder.Build();
 
-// Simple self-contained schema creation (no external migration step required)
-using (var scope = app.Services.CreateScope())
+// Schema initialization now optional: database must be pre-created externally (script / infra).
+// For on-prem dev you can still allow table creation by omitting SKIP_DB_INIT or setting it to 0.
+if (Environment.GetEnvironmentVariable("SKIP_DB_INIT") != "1")
 {
-    var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-    db.Database.EnsureCreated();
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+        // Only attempt table creation if we can connect to existing DB (we no longer create the database itself).
+        if (db.Database.CanConnect())
+        {
+            db.Database.EnsureCreated(); // Creates tables only if missing.
+        }
+        else
+        {
+            Console.WriteLine("[Startup] Database unreachable. Skipping schema init. Ensure DB exists and credentials are correct.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Startup] Schema init skipped due to error: {ex.Message}");
+    }
 }
 
 if (!app.Environment.IsDevelopment())

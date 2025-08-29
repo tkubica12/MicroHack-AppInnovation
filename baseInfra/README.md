@@ -5,6 +5,7 @@ Current scope (incremental):
 - Subscription level Bicep templates to create `n` user environments each containing:
 	- Resource Group (`rg-user<NNN>`)
 	- Public IP (`pip-user<NNN>`) used exclusively by Bastion
+	- NAT Gateway (`nat-user<NNN>`) with its own Public IP (`pip-nat-user<NNN>`) for outbound internet from private subnet
 	- Network Security Group restricting RDP (3389) to VirtualNetwork only (`nsg-user<NNN>`)
 	- Virtual Network (`vnet-user<NNN>`) with subnets: `vms` (/24), `AzureBastionSubnet` (/26)
 	- Network Interface (`nic-user<NNN>`)
@@ -76,6 +77,7 @@ Each per‑user environment provisions:
 - A Windows Server VM (`vm-user<NNN>`)
 - Azure Bastion (using the shared Public IP) for secure RDP in the portal
 - A Custom Script Extension that installs Git, .NET SDK 8.0.413, SQL Express, clones this repo, and creates a desktop shortcut to run the app
+- A NAT Gateway providing scalable outbound SNAT; the VM NIC has no public IP and egress IP is `pip-nat-user<NNN>` (visible via external services like ifconfig.me)
 
 ### Steps
 1. In the Azure Portal open the resource group `rg-user<NNN>` you want to use.

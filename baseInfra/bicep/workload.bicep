@@ -21,12 +21,15 @@ param enableAcceleratedNetworking bool = false
 
 var padded = padLeft(string(userIndex), 3, '0')
 var pipName = 'pip-user${padded}'
+// Public IP dedicated to NAT Gateway (separate from Bastion PIP)
+var natPublicIpName = 'pip-nat-user${padded}'
 var vnetName = 'vnet-user${padded}'
 var vmsSubnetName = 'vms'
 var bastionSubnetName = 'AzureBastionSubnet'
 var nsgName = 'nsg-user${padded}'
 var nicName = 'nic-user${padded}'
 var vmName = 'vm-user${padded}'
+var natGatewayName = 'nat-user${padded}'
 // URL of provisioning script to execute via Custom Script Extension
 var setupScriptUrl = 'https://github.com/tkubica12/MicroHack-AppInnovation/raw/refs/heads/main/baseInfra/scripts/setup.ps1'
 
@@ -46,6 +49,35 @@ resource publicIp 'Microsoft.Network/publicIPAddresses@2023-04-01' = {
   }
   properties: {
     publicIPAllocationMethod: 'Static'
+  }
+}
+
+// Public IP used by NAT Gateway for outbound SNAT of private subnet workloads
+resource natPublicIp 'Microsoft.Network/publicIPAddresses@2023-04-01' = {
+  name: natPublicIpName
+  location: location
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    publicIPAllocationMethod: 'Static'
+  }
+}
+
+// NAT Gateway providing outbound internet connectivity for VMs without assigning public IPs directly
+resource natGateway 'Microsoft.Network/natGateways@2023-04-01' = {
+  name: natGatewayName
+  location: location
+  sku: {
+    name: 'Standard'
+  }
+  properties: {
+    idleTimeoutInMinutes: 4
+    publicIpAddresses: [
+      {
+        id: natPublicIp.id
+      }
+    ]
   }
 }
 
@@ -87,12 +119,18 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-04-01' = {
           networkSecurityGroup: {
             id: nsg.id
           }
+          natGateway: {
+            id: natGateway.id
+          }
         }
       }
       {
         name: bastionSubnetName
         properties: {
           addressPrefix: derivedBastionSubnetCidr
+          natGateway: {
+            id: natGateway.id
+          }
         }
       }
     ]
@@ -119,6 +157,11 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-04-01' = {
     }
     enableAcceleratedNetworking: enableAcceleratedNetworking
   }
+  // Explicit to ensure NAT Gateway association (via vnet) is completed before NIC provisioning proceeds
+  dependsOn: [
+    vnet
+    natGateway
+  ]
 }
 
 // Azure Bastion host using the created Standard Public IP
@@ -189,6 +232,11 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
       ]
     }
   }
+  // Ensure NAT Gateway + NIC fully realized before VM create (belt-and-braces in addition to implicit deps)
+  dependsOn: [
+    nic
+    natGateway
+  ]
 }
 
 // Custom Script Extension to run provisioning script (creates desktop shortcut etc.)
@@ -211,3 +259,4 @@ resource vmSetup 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
 output publicIpName string = pipName
 output vnetName string = vnetName
 output vmName string = vmName
+output natGatewayName string = natGatewayName
