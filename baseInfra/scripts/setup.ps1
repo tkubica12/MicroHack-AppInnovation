@@ -160,18 +160,20 @@ Start-Sleep 10
 Start-Process "http://localhost:5000"
 '@ | Set-Content -Path $startScript -Encoding UTF8
 
-Write-Info "Creating desktop shortcut"
+Write-Info "Creating desktop shortcut (hardcoded azureuser)"
 $shell = New-Object -ComObject WScript.Shell
-$shortcutPaths = @([Environment]::GetFolderPath('Desktop'), (Join-Path $env:Public 'Desktop')) | Where-Object { Test-Path $_ }
-foreach ($desk in $shortcutPaths) {
-  $lnk = Join-Path $desk 'LegoCatalog App.lnk'
-  $sc = $shell.CreateShortcut($lnk)
-  $sc.TargetPath = 'powershell.exe'
-  $sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$startScript`""
-  $sc.WorkingDirectory = "C:\Apps\LegoCatalog\dotnet"
-  $sc.WindowStyle = 1
-  $sc.IconLocation = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
-  $sc.Save()
+$userDesktop = 'C:\Users\azureuser\Desktop'
+if (-not (Test-Path $userDesktop)) {
+  Write-Warn "Desktop path $userDesktop not found, creating it"
+  New-Item -ItemType Directory -Path $userDesktop -Force | Out-Null
 }
+$lnk = Join-Path $userDesktop 'LegoCatalog App.lnk'
+$sc = $shell.CreateShortcut($lnk)
+$sc.TargetPath = 'powershell.exe'
+$sc.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$startScript`""
+$sc.WorkingDirectory = "C:\Apps\LegoCatalog\dotnet"
+$sc.WindowStyle = 1
+$sc.IconLocation = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
+$sc.Save()
 
 Write-Info "Provisioning complete (use desktop shortcut to start app)"
