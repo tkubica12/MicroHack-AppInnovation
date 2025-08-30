@@ -75,6 +75,8 @@
 - Added Step 8 creating one-time scheduled task `DevToolsInstallOnce` plus `C:\dev-tools-install.ps1` to install VS Code, Azure CLI, Rancher Desktop, and SSMS via winget on first interactive logon; task self-unregisters after success and writes marker file.
 ### 2025-08-29 (Infrastructure - simplify startup & dev tools execution)
 - Removed scheduled tasks (auto-start & dev tools). Retained plain scripts `C:\start-app.ps1` and `C:\dev-tools-install.ps1` for manual execution. Eliminated delayed wrapper. DISM 3010 exit code now treated as success requiring reboot.
+### 2025-08-30 (Infrastructure - dev tools script update)
+- Added Git (`Git.Git`) installation to `C:\dev-tools-install.ps1` script.
 ## Implementation Log
 
 ### 2025-08-27

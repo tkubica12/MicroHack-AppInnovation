@@ -196,7 +196,7 @@ $startScriptLines | Set-Content -Path 'C:\start-app.ps1' -Encoding UTF8
 Info 'Start script created at C:\start-app.ps1'
 
 ###########################################################################
-# 8. Create dev tools install scheduled task (winget after first logon)
+# 8. Create dev tools install 
 ###########################################################################
 Step 8 'Create developer tools install script'
 $devToolsScript = 'C:\dev-tools-install.ps1'
@@ -222,6 +222,7 @@ Install-Pkg 'Microsoft.VisualStudioCode'
 Install-Pkg 'Microsoft.AzureCLI'
 Install-Pkg 'SUSE.RancherDesktop'
 Install-Pkg 'Microsoft.SQLServerManagementStudio'
+Install-Pkg 'Git.Git'
 "Installed at: $(Get-Date -Format o)" | Out-File "C:\dev-tools-installed.txt" -Encoding UTF8 -Force
 Write-Host "[DevTools] Installation complete."
 '@
