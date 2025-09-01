@@ -77,6 +77,15 @@
 - Removed scheduled tasks (auto-start & dev tools). Retained plain scripts `C:\start-app.ps1` and `C:\dev-tools-install.ps1` for manual execution. Eliminated delayed wrapper. DISM 3010 exit code now treated as success requiring reboot.
 ### 2025-08-30 (Infrastructure - dev tools script update)
 - Added Git (`Git.Git`) installation to `C:\dev-tools-install.ps1` script.
+### 2025-09-01 (Challenge 01 - Azure SQL serverless template)
+- Added `solutions/ch01/bicep/main.bicep` to deploy Azure SQL logical server + single serverless database (General Purpose tier) with auto-pause 60 minutes and max 2 vCores (implicit min 0.5).
+- Implemented unique server naming via `uniqueString(resourceGroup().id)` and firewall rule parameterizing application public IP.
+- Included example parameters file `main.bicepparam` and README with deployment instructions & rationale for omitted explicit `minCapacity`.
+### 2025-09-01 (Challenge 01 - Bicep fixes & lint cleanup)
+- Replaced incorrect `securestring` ARM-style type with Bicep secure decorator (`@secure() param administratorLoginPassword string`).
+- Simplified child database resource syntax using `parent` property; removed unnecessary `dependsOn` and updated output to still surface names (no functional change).
+- Addressed linter warnings: removed quotes around tag key `workload` (left quotes for `managed-by` which contains a hyphen) and eliminated `use-parent-property` & `no-unnecessary-dependson` warnings.
+- Left API version at preview per original template (only warning-level diagnostics); consider moving to latest stable typed version in future hardening pass.
 ## Implementation Log
 
 ### 2025-08-27

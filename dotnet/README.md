@@ -21,7 +21,6 @@ Environment variables (aligns with design doc):
 | SQL_CONNECTION_STRING | Full SQL Server connection string | `Server=.\\SQLEXPRESS;Database=LegoCatalog;TrustServerCertificate=True;Integrated Security=True` |
 | SEED_DATA_PATH | Optional path to `catalog.json` for automatic import when DB empty | `C:\\git\\MicroHack-AppInnovation\\data\\catalog.json` |
 | IMAGE_ROOT_PATH | Folder containing PNG images | `C:\\git\\MicroHack-AppInnovation\\data\\images` |
-| (removed) | Import now always runs on startup (idempotent) | |
 
 If `SQL_CONNECTION_STRING` is not supplied, the fallback from `appsettings.json` is used.
 
