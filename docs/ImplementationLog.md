@@ -93,6 +93,24 @@
 - README updated with build/run instructions including volume mounts for images & seed catalog.
 ### 2025-09-01 (App - Dockerfile publish fix)
 - Removed `--no-restore` from publish to prevent intermittent `NETSDK1064` (missing analyzer package) during layered build; publish now performs final restore ensuring completeness.
+### 2025-09-01 (Challenge 01 - Add Azure Container Registry)
+- Extended `solutions/ch01/bicep/main.bicep` to provision Azure Container Registry with unique name (`acr${uniqueString(resourceGroup().id)}`) and configurable SKU (Basic default; allowed Standard/Premium).
+- Added outputs for registry name & login server; disabled admin user (prefer AAD) and documented usage in README.
+- Updated parameter file and Bicep README to reflect new `acrSku` parameter and combined scope (SQL + ACR).
+### 2025-09-01 (Challenge 01 - Allow Azure services firewall rule)
+- Added `AllowAzureServices` firewall rule (0.0.0.0 start/end) to SQL server in `solutions/ch01/bicep/main.bicep` to permit connections from Azure services when app lacks fixed outbound IP.
+### 2025-09-01 (Challenge 01 - Container Apps deployment)
+- Extended `solutions/ch01/bicep/main.bicep` with Azure Container Apps managed environment (consumption workload profile) and container app referencing ACR image `lego-catalog/app:latest`.
+- Added storage account + two Azure Files shares (seed + images) mounted at `/mnt/seed` and `/mnt/images`; env vars `IMAGE_ROOT_PATH` and `SEED_DATA_PATH` updated accordingly.
+- Implemented secret for `SQL_CONNECTION_STRING` and AcrPull role assignment via system-assigned identity.
+- Configured HTTP ingress (external) on port 8080 and HTTP-based autoscale 0..3 replicas (concurrentRequests=50 threshold).
+### 2025-09-01 (Challenge 01 - Container Apps deployment fix)
+- Fixed Bicep compile issues: replaced fractional CPU (0.5) with integer 1 due to Bicep numeric literal limitation; added explanatory comment.
+- Adjusted role assignment resource name to exclude runtime principalId (now deterministic GUID using ACR id + app name) resolving BCP120.
+### 2025-09-01 (Challenge 01 - ACR image pull hardening)
+- Switched Container App from system-assigned to user-assigned managed identity for ACR pulls following official guidance (pre-create identity, grant AcrPull before app deploy) to avoid cold-start race where image pull occurs before role assignment propagates.
+- Added `userAssignedIdentityName` parameter & identity resource, updated role assignment to use identity principalId, configured container registry block with identity resource ID.
+- Exposed identity resource ID in outputs for diagnostics.
 ## Implementation Log
 
 ### 2025-08-27

@@ -8,3 +8,6 @@ param administratorLoginPassword = 'Azure12345678'
 param databaseName = 'LegoCatalog'
 param maxVcores = 2
 param autoPauseDelayMinutes = 60
+param acrSku = 'Basic'
+// Optionally override generated registry name (must be globally unique, 5-50 alphanumeric)
+// param acrName = 'mycustomacr12345'
