@@ -86,6 +86,13 @@
 - Simplified child database resource syntax using `parent` property; removed unnecessary `dependsOn` and updated output to still surface names (no functional change).
 - Addressed linter warnings: removed quotes around tag key `workload` (left quotes for `managed-by` which contains a hyphen) and eliminated `use-parent-property` & `no-unnecessary-dependson` warnings.
 - Left API version at preview per original template (only warning-level diagnostics); consider moving to latest stable typed version in future hardening pass.
+### 2025-09-01 (App - Dockerfile for Blazor Server)
+- Added multi-stage Linux Dockerfile (`dotnet/Dockerfile`) targeting .NET 8 (SDK -> aspnet runtime).
+- Uses Debian-based images (not Alpine) to avoid additional native dependency installs for `Microsoft.Data.SqlClient`.
+- Sets default `ASPNETCORE_URLS=http://0.0.0.0:8080`, exposes 8080, and creates non-root `appuser`.
+- README updated with build/run instructions including volume mounts for images & seed catalog.
+### 2025-09-01 (App - Dockerfile publish fix)
+- Removed `--no-restore` from publish to prevent intermittent `NETSDK1064` (missing analyzer package) during layered build; publish now performs final restore ensuring completeness.
 ## Implementation Log
 
 ### 2025-08-27

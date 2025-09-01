@@ -25,7 +25,7 @@ Environment variables (aligns with design doc):
 If `SQL_CONNECTION_STRING` is not supplied, the fallback from `appsettings.json` is used.
 
 ### Prerequisites
-- .NET 9 SDK (preview or later current release)
+- .NET 8 SDK
 - SQL Server Express (or any reachable SQL Server). Example local install: https://aka.ms/sqlexpress
 - The generated `catalog.json` + `images/` from the Python generator (place them under the repository `data/` folder or anywhere and point env vars accordingly).
 
@@ -56,6 +56,36 @@ Minimal required per item: `id`, `name`, `category`, `description`, `imageFile` 
 - Provide env vars instead of editing `appsettings.*` inside container.
 - Images can be volume-mounted and pointed via `IMAGE_ROOT_PATH`.
 - For Azure SQL, set `SQL_CONNECTION_STRING` accordingly.
+
+### Containerization
+A multi-stage Dockerfile (`dotnet/Dockerfile`) is included for Linux builds.
+
+Build (from within the `dotnet` directory where the Dockerfile resides):
+```powershell
+cd dotnet
+docker build -t lego-catalog .
+```
+
+Run from project root, configure proper SQL connection string and we are mapping local folders into container as volumes:
+```powershell
+$env:SQL_CONNECTION_STRING = 'Server=host.docker.internal,1433;Database=LegoCatalog;User Id=sa;Password=Your_password123;TrustServerCertificate=True'
+docker run --rm -p 8080:8080 `
+	-e SQL_CONNECTION_STRING="$env:SQL_CONNECTION_STRING" `
+	-e IMAGE_ROOT_PATH=/data/images `
+	-e SEED_DATA_PATH=/seed/catalog.json `
+	-v ${PWD}/data/images:/data/images:ro `
+	-v ${PWD}/data/catalog.json:/seed/catalog.json:ro `
+	lego-catalog
+```
+
+Open http://localhost:8080.
+
+Key env vars for container:
+- `SQL_CONNECTION_STRING` (required unless default works)
+- `IMAGE_ROOT_PATH` (container path to mounted images)
+- `SEED_DATA_PATH` (optional seed JSON import file path)
+
+Non-root user `appuser` is used in the final image. Adjust port via `ASPNETCORE_URLS` if needed.
 
 ### Future Enhancements (Deferred)
 - Switch to EF Core migrations later if schema evolution becomes necessary.

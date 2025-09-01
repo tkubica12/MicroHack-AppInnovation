@@ -38,4 +38,8 @@ Create Dockerfile for my dotnet application that is using Razor pages. Currently
 - We are building for Linux
 - Use multi-stage Dockerfile so we build and publish with SDK version and run on runtime version
 - Use .NET version 8
+- Place Dockerfile into MicroHack-AppInnovation\dotnet so make sure paths used in Dockerfile are relative to it
+- Add example docker CLI commands to README on how to build container and run it with mapped volumes to data folder in this project and by leveraging SQL_CONNECTION_STRING set in env and passed as env into docker
 ```
+
+[Dockerfile](./Dockerfile) should placed into ```dotnet/``` folder for build, for run you would tycali run from root (depending on how you do volume mapping).
