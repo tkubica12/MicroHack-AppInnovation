@@ -21,6 +21,7 @@ Environment variables (aligns with design doc):
 | SQL_CONNECTION_STRING | Full SQL Server connection string | `Server=.\\SQLEXPRESS;Database=LegoCatalog;TrustServerCertificate=True;Integrated Security=True` |
 | SEED_DATA_PATH | Optional path to `catalog.json` for automatic import when DB empty | `C:\\git\\MicroHack-AppInnovation\\data\\catalog.json` |
 | IMAGE_ROOT_PATH | Folder containing PNG images | `C:\\git\\MicroHack-AppInnovation\\data\\images` |
+| PERFTEST_API_KEY | API key required for `/perftest/catalog` endpoint (performance testing) | `MySecretKey123` |
 
 If `SQL_CONNECTION_STRING` is not supplied, the fallback from `appsettings.json` is used.
 
@@ -84,6 +85,7 @@ Key env vars for container:
 - `SQL_CONNECTION_STRING` (required unless default works)
 - `IMAGE_ROOT_PATH` (container path to mounted images)
 - `SEED_DATA_PATH` (optional seed JSON import file path)
+- `PERFTEST_API_KEY` (override default `Azure12346578` for perf endpoint)
 
 Non-root user `appuser` is used in the final image. Adjust port via `ASPNETCORE_URLS` if needed.
 
@@ -98,3 +100,29 @@ Non-root user `appuser` is used in the final image. Adjust port via `ASPNETCORE_
 
 ### License / Generated Assets
 Generated images & metadata are for instructional use only.
+
+### Performance Test Endpoint
+For load testing without establishing Blazor Server circuits you can hit a dedicated HTTP endpoint that returns the full catalog list (all figures) in a single JSON response.
+
+Endpoint:
+```
+GET /perftest/catalog
+Header: x-api-key: <key>
+```
+
+Security:
+- Protected by an API key passed in header `x-api-key`.
+- Default key: `Azure12346578` (defined in `appsettings.json` under `PerfTest:ApiKey`).
+- Override via environment variable `PERFTEST_API_KEY` for production / real tests.
+
+Environment precedence for key:
+1. `PERFTEST_API_KEY` env var
+2. `PerfTest:ApiKey` in configuration (e.g., `appsettings.json`)
+3. Built-in fallback constant `Azure12346578`
+
+Example (PowerShell) manual test:
+```powershell
+Invoke-RestMethod -Uri 'http://localhost:5000/perftest/catalog' -Headers @{ 'x-api-key' = 'Azure12346578' }
+```
+
+Use this endpoint in Azure Load Testing / JMeter / k6 to drive database + serialization load without needing to script the SignalR negotiate/WebSocket steps of Blazor Server.

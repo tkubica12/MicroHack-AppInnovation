@@ -70,6 +70,38 @@ app.MapGet("/images/{fileName}", (string fileName, IConfiguration cfg) =>
     return Results.File(stream, "image/png");
 });
 
+// Performance test endpoint: returns all catalog items.
+// Secured via simple API key passed in header `x-api-key`.
+app.MapGet("/perftest/catalog", async (HttpRequest request, FigureCatalogService catalog, IConfiguration cfg, CancellationToken ct) =>
+{
+    var providedKey = request.Headers["x-api-key"].FirstOrDefault();
+    var expectedKey = Environment.GetEnvironmentVariable("PERFTEST_API_KEY")
+                      ?? cfg["PerfTest:ApiKey"]
+                      ?? "Azure12346578"; // default fallback
+
+    if (string.IsNullOrEmpty(providedKey) || !CryptographicEquals(providedKey, expectedKey))
+    {
+        return Results.Unauthorized();
+    }
+
+    // Null filters => full catalog. This is intentionally heavy for load testing DB + serialization.
+    var items = await catalog.ListAsync(null, null, ct);
+    return Results.Ok(items);
+})
+.WithName("PerfCatalogAll");
+
+// Constant-time comparison to avoid timing leaks (micro-optimization, but trivial to add)
+static bool CryptographicEquals(string a, string b)
+{
+    if (a.Length != b.Length) return false;
+    var mismatch = 0;
+    for (int i = 0; i < a.Length; i++)
+    {
+        mismatch |= a[i] ^ b[i];
+    }
+    return mismatch == 0;
+}
+
 app.MapRazorPages();
 app.MapBlazorHub();
 app.MapFallbackToPage("/_Host");
