@@ -1,6 +1,7 @@
 using LegoCatalog.App.Data;
 using LegoCatalog.App.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,13 @@ builder.Services.AddDbContext<CatalogDbContext>(options =>
 
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+
+// Prevent JSON serialization cycles (Category <-> Figures) in minimal API responses like /perftest/catalog
+builder.Services.ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles; // skip repeat references
+    o.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+});
 
 builder.Services.AddScoped<IFigureRepository, FigureRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -72,21 +80,43 @@ app.MapGet("/images/{fileName}", (string fileName, IConfiguration cfg) =>
 
 // Performance test endpoint: returns all catalog items.
 // Secured via simple API key passed in header `x-api-key`.
-app.MapGet("/perftest/catalog", async (HttpRequest request, FigureCatalogService catalog, IConfiguration cfg, CancellationToken ct) =>
+app.MapGet("/perftest/catalog", async (HttpRequest request,
+                                       FigureCatalogService catalog,
+                                       IConfiguration cfg,
+                                       ILoggerFactory loggerFactory,
+                                       CancellationToken ct) =>
 {
-    var providedKey = request.Headers["x-api-key"].FirstOrDefault();
-    var expectedKey = Environment.GetEnvironmentVariable("PERFTEST_API_KEY")
-                      ?? cfg["PerfTest:ApiKey"]
-                      ?? "Azure12346578"; // default fallback
-
-    if (string.IsNullOrEmpty(providedKey) || !CryptographicEquals(providedKey, expectedKey))
+    var logger = loggerFactory.CreateLogger("PerfTest.CatalogEndpoint");
+    try
     {
-        return Results.Unauthorized();
-    }
+        var remoteIp = request.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        var providedKey = request.Headers["x-api-key"].FirstOrDefault()?.Trim();
+        var expectedKey = (Environment.GetEnvironmentVariable("PERFTEST_API_KEY")
+                           ?? cfg["PerfTest:ApiKey"]
+                           ?? "Azure12346578").Trim();
 
-    // Null filters => full catalog. This is intentionally heavy for load testing DB + serialization.
-    var items = await catalog.ListAsync(null, null, ct);
-    return Results.Ok(items);
+        if (string.IsNullOrEmpty(providedKey) || !CryptographicEquals(providedKey, expectedKey))
+        {
+            logger.LogInformation("/perftest/catalog unauthorized from {RemoteIp}", remoteIp);
+            return Results.Unauthorized();
+        }
+
+        var items = await catalog.ListAsync(null, null, ct); // heavy intentionally
+        var count = items?.Count() ?? 0;
+        logger.LogInformation("/perftest/catalog returned {Count} items to {RemoteIp}", count, remoteIp);
+        return Results.Ok(items);
+    }
+    catch (OperationCanceledException)
+    {
+        // Keep cancellation log at information level now (reduced verbosity)
+        logger.LogInformation("/perftest/catalog cancelled");
+        return Results.StatusCode(StatusCodes.Status499ClientClosedRequest); // Non-standard, but indicative.
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "/perftest/catalog failed");
+        return Results.Problem("Unexpected error executing performance catalog endpoint.");
+    }
 })
 .WithName("PerfCatalogAll");
 

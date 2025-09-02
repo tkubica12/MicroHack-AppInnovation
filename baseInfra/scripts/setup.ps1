@@ -200,10 +200,8 @@ Info 'Start script created at C:\start-app.ps1'
 ###########################################################################
 Step 8 'Create developer tools install script'
 $devToolsScript = 'C:\dev-tools-install.ps1'
-$devToolsMarker = 'C:\dev-tools-installed.txt'
 $devToolsScriptContent = @'
 Write-Host "[DevTools] Starting developer tools installation"
-if (Test-Path "C:\dev-tools-installed.txt") { Write-Host "[DevTools] Already installed (marker present)."; exit 0 }
 function Install-Pkg {
     param([string]$Id)
     Write-Host "[DevTools] Installing $Id"
@@ -223,7 +221,8 @@ Install-Pkg 'Microsoft.AzureCLI'
 Install-Pkg 'SUSE.RancherDesktop'
 Install-Pkg 'Microsoft.SQLServerManagementStudio'
 Install-Pkg 'Git.Git'
-"Installed at: $(Get-Date -Format o)" | Out-File "C:\dev-tools-installed.txt" -Encoding UTF8 -Force
+Install-Pkg 'Python.Python.3.13'
+Install-Pkg 'astral-sh.uv'
 Write-Host "[DevTools] Installation complete."
 '@
 $devToolsScriptContent | Set-Content -Path $devToolsScript -Encoding UTF8

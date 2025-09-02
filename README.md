@@ -26,7 +26,7 @@ Source code and important documentation for this application is stored in ```dot
 [Challenge](/challenges/ch01/README.md) | [Solution]( /solutions/ch01/README.md)
 
 ### ch02: Test autoscaling under load
-TBD
+[Challenge](/challenges/ch02/README.md) | [Solution]( /solutions/ch02/README.md)
 
 ### ch03: Implement CI/CD pipeline to automatically deploy changes
 TBD
