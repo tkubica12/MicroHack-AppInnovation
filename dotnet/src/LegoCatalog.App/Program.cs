@@ -84,6 +84,7 @@ app.MapGet("/perftest/catalog", async (HttpRequest request,
                                        FigureCatalogService catalog,
                                        IConfiguration cfg,
                                        ILoggerFactory loggerFactory,
+                                       CatalogDbContext db,
                                        CancellationToken ct) =>
 {
     var logger = loggerFactory.CreateLogger("PerfTest.CatalogEndpoint");
@@ -101,16 +102,42 @@ app.MapGet("/perftest/catalog", async (HttpRequest request,
             return Results.Unauthorized();
         }
 
-        var items = await catalog.ListAsync(null, null, ct); // heavy intentionally
+        // 1. Normal catalog (kept for response payload)
+        var items = await catalog.ListAsync(null, null, ct); // returns figures with categories
         var count = items?.Count() ?? 0;
-        logger.LogInformation("/perftest/catalog returned {Count} items to {RemoteIp}", count, remoteIp);
+
+        // 2. CPU burner query (amplifies work inside SQL Server but discards result)
+        //    Techniques: row amplification via CROSS JOIN (VALUES...), window functions, HASHBYTES, aggregation.
+        //    Limited to modest amplification factor (x16) to avoid runaway network output.
+        const string heavySql = @"
+;WITH Tally AS (
+    SELECT 1 AS n
+    UNION ALL SELECT n+1 FROM Tally WHERE n < 256 -- amplification factor (adjust carefully)
+)
+SELECT 
+    SUM(CAST(ABS(CHECKSUM(NEWID(), f.Id, f.CategoryId, t.n)) AS bigint)) AS [WorkSum],
+    AVG(CAST(ABS(CHECKSUM(f.Name, t.n, NEWID())) AS bigint)) AS [AvgWork],
+    MAX(HASHBYTES('SHA2_256', CONVERT(varbinary(36), f.Id) + CAST(t.n AS varbinary(4)))) AS [MaxHash]
+FROM Figures f
+INNER JOIN Categories c ON c.Id = f.CategoryId
+CROSS JOIN Tally t
+OPTION (MAXRECURSION 0, RECOMPILE, MAXDOP 4);"; // BIGINT prevents overflow; RECOMPILE + NEWID() adds CPU
+
+        // Execute heavy query (discarding result) to generate CPU load.
+        // Using ExecuteSqlRawAsync since we don't project results.
+        for (int i = 0; i < 20; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            await db.Database.ExecuteSqlRawAsync(heavySql, ct);
+        }
+
+    logger.LogInformation("/perftest/catalog returned {Count} items (heavy SQL executed x10) to {RemoteIp}", count, remoteIp);
         return Results.Ok(items);
     }
     catch (OperationCanceledException)
     {
-        // Keep cancellation log at information level now (reduced verbosity)
         logger.LogInformation("/perftest/catalog cancelled");
-        return Results.StatusCode(StatusCodes.Status499ClientClosedRequest); // Non-standard, but indicative.
+        return Results.StatusCode(StatusCodes.Status499ClientClosedRequest);
     }
     catch (Exception ex)
     {
