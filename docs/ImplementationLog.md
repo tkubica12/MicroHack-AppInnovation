@@ -114,7 +114,7 @@
 ### 2025-09-03 (CI/CD - Simple GitHub Actions workflow)
 - Added `.github/workflows/simple.yaml` triggering on `push` to `main` affecting `dotnet/**` and manual `workflow_dispatch`.
 - Implements OIDC Azure login (id-token permission) using repository variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).
-- Builds Docker image from `dotnet/Dockerfile` tagging with workflow run ID (`run-<GITHUB_RUN_ID>`) + `latest`, pushes to ACR `${{ vars.ACR_NAME }}` under repository `lego-catalog/app`.
+- Builds Docker image from `dotnet/Dockerfile` tagging only with workflow run ID (`<GITHUB_RUN_ID>`), no `latest` tag to enforce explicit version pinning, pushes to ACR `${{ vars.ACR_NAME }}` under repository `lego-catalog/app`.
 - Updates Azure Container App `lego-catalog-app` in resource group `${{ vars.RESOURCE_GROUP_NAME }}` with new image and sets `IMAGE_VERSION` env var.
 - Notes: placeholder disabled docker/login-action kept for future direct push optimization; relies on `az acr login` after Azure CLI OIDC auth.
 ### 2025-09-03 (CI/CD - GitHub Actions Managed Identity in Bicep)
