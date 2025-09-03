@@ -144,6 +144,15 @@
 - Introduced custom `ActivitySource` + `Meter` and counter `lego.perf_endpoint.invocations` plus a small internal activity segment for `/perftest/catalog` post-processing.
 - Updated README with comprehensive OTEL_* environment variable documentation and quick start collector example.
 - Chose secure defaults: do not emit full SQL text; rely on sampling env vars if set; query redaction remains enabled unless experimental disable variable applied.
+### 2025-09-03 (Challenge 04 - OpenTelemetry Collector + App Insights wiring)
+- Extended `solutions/ch04/bicep/main.bicep` with optional monitoring stack controlled by `enableOtel` (default true).
+- Added Log Analytics workspace + workspace-based Application Insights component (web kind) when enabled.
+- Injected `appInsightsConfiguration.connectionString` and `openTelemetryConfiguration` (traces + logs destinations = `appInsights`) into Container Apps managed environment using preview API version supporting OTEL.
+- Added new parameters: `enableOtel`, `logAnalyticsWorkspaceName`, `appInsightsName`, `logAnalyticsRetentionInDays` (with validation range 30-730 days).
+- Updated parameter file with defaults & commented override examples; README (ch04) documents usage, validation steps, and notes on metrics limitation.
+- Exposed outputs for connection string and resource names (or 'disabled' sentinel) to aid testing and GitHub workflows.
+### 2025-09-03 (Infrastructure - RG tagging for security exemption)
+- Added `SecurityControl=ignore` tag to per-user resource group in `baseInfra/bicep/userInfra.bicep` to satisfy security scanning exemption requirement.
 ## Implementation Log
 
 ### 2025-08-27

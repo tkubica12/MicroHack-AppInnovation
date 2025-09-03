@@ -22,16 +22,14 @@ param vnetAddressSpace string = ''
 param subnetAddressPrefix string = ''
 
 var padded = padLeft(string(userIndex), 3, '0')
-// Naming per CAF guidance: <resourceAbbrev>-user<###>
 var rgName = 'rg-user${padded}'
-// (Public IP name produced inside workload module)
 
 // Create resource group for this user
 resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   name: rgName
   location: location
   tags: {
-    SecurityControl: 'ignore'
+    SecurityControl: 'ignore'   // This is for secured subscription to disable some policies because ACA do not support managed identity for mounting Azure Files, only keys
   }
 }
 
