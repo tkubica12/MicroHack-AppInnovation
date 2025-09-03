@@ -290,7 +290,7 @@ resource containerApp 'Microsoft.App/containerApps@2025-02-02-preview' = {
           value: sqlConnectionString
         }
       ]
-      activeRevisionsMode: 'Single'
+  activeRevisionsMode: 'Multiple'
     }
     template: {
       containers: [
@@ -388,6 +388,35 @@ resource ghActionsFederatedCredential 'Microsoft.ManagedIdentity/userAssignedIde
   }
 }
 
+// Additional federated credential for GitHub environment 'staging'
+// Subject format for environments: repo:<org>/<repo>:environment:<environmentName>
+resource ghActionsFederatedCredentialStaging 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2025-01-31-preview' = {
+  name: 'github-actions-staging'
+  parent: ghActionsIdentity
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    subject: 'repo:${githubOrg}/${githubRepo}:environment:staging'
+    audiences: [ 'api://AzureADTokenExchange' ]
+  }
+  dependsOn: [
+    ghActionsFederatedCredential
+  ]
+}
+
+// Additional federated credential for GitHub environment 'production'
+resource ghActionsFederatedCredentialProduction 'Microsoft.ManagedIdentity/userAssignedIdentities/federatedIdentityCredentials@2025-01-31-preview' = {
+  name: 'github-actions-production'
+  parent: ghActionsIdentity
+  properties: {
+    issuer: 'https://token.actions.githubusercontent.com'
+    subject: 'repo:${githubOrg}/${githubRepo}:environment:production'
+    audiences: [ 'api://AzureADTokenExchange' ]
+  }
+  dependsOn: [
+    ghActionsFederatedCredentialStaging
+  ]
+}
+
 // Contributor role assignment for the GitHub Actions identity at resource group scope
 resource ghActionsContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(resourceGroup().id, ghActionsIdentity.id, 'Contributor')
@@ -399,6 +428,8 @@ resource ghActionsContributor 'Microsoft.Authorization/roleAssignments@2022-04-0
   }
   dependsOn: [
     ghActionsFederatedCredential
+    ghActionsFederatedCredentialStaging
+    ghActionsFederatedCredentialProduction
   ]
 }
 

@@ -123,6 +123,18 @@
 - Added Contributor role assignment for identity at resource group scope (guid derived) enabling infrastructure + container app updates.
 - Outputs now include `ghActionsIdentityClientId` / principal & resource IDs for populating GitHub repository variables (`AZURE_CLIENT_ID`).
 - Updated Bicep README documenting new parameters, outputs, and setup instructions for OIDC.
+### 2025-09-03 (Container Apps - Enable multiple revisions)
+- Changed `activeRevisionsMode` from `Single` to `Multiple` in `solutions/ch03/bicep/main.bicep` to support advanced deployment workflow (parallel revisions, manual promotion / traffic splitting).
+- Added inline comment explaining rationale; groundwork for upcoming multi-step GitHub Actions pipeline (blue/green or canary style) described in challenge README.
+### 2025-09-03 (CI/CD - Multi-environment GitHub federation)
+- Added two additional federated identity credentials to GitHub Actions managed identity for environments `staging` and `production` (subjects `repo:<org>/<repo>:environment:staging|production`).
+- Allows using GitHub Environments with protection rules & approvals while reusing the same Azure Managed Identity.
+- Updated README (ch03) with instructions on referencing environment-based OIDC in workflows.
+### 2025-09-03 (CI/CD - Multi-revision staged promotion workflow)
+- Refactored `.github/workflows/simple.yaml` into two jobs: `build_and_stage` (environment: staging) and `promote_production` (environment: production with approval).
+- Staging job builds & pushes image (tag = run id), creates new revision, forces 0% traffic to new revision (old stays 100%) and exports revision names.
+- Production job (after manual approval) shifts traffic to new revision (100%) and deactivates previous revision to reduce drift.
+- Supports blue/green style promotion using Azure Container Apps multiple revisions mode and GitHub Environments gating.
 ## Implementation Log
 
 ### 2025-08-27

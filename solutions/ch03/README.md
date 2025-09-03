@@ -31,4 +31,23 @@ Modify my main.bicep template to include managed identity that will be used by m
 
 Make sure to configure all necessary variables in GitHub repository/Security/Secrets and variables/Actions/Variables including AZURE_CLIENT_ID and AZURE_TENANT_ID of your managed identity, AZURE_SUBSCRIPTION_ID and RESOURCE_GROUP_NAME for the target resource group, and ACR_NAME for the Azure Container Registry name.
 
+## Multi-step pipeline
+In this step we will comment-out simple pipeline and create new more advanced version. We will change revision mode in Azure Container Apps to support multiple versions running int the same time, deploy new version without sending user traffic to it, do manual testing (or send small fraction of users to new version) and have manual step in our GitHub Actions workflow to promote new version to be only active revision in Azure Container App and change Managed Identity for GitHub to support multiple environments.
 
+Example prompt:
+
+```
+Change main.bicep in ch03 to enable multiple revision in Azure Container Apps. Also we will change Managed Identity for GitHub to support multiple environments. Implement another two federated credentials of type environment and values staging and production. Note federated credentials cannot be configured in paralel so add proper dependsOn.
+```
+
+Let's modify GitHub Actions workflow to support multiple revisions in Azure Container Apps.
+
+Here is example prompt:
+
+```
+Change .github/workflows/simple.yaml to support multiple revisions in Azure Container Apps
+- Changes in container should be deployed into Azure Container App which is in multiple mode for revision so it is deployed yet not active for users.
+- After this manual approval must be done in pipeline to continue
+- After approval new revision should receive 100% of traffic and previous revision should be deactivated.
+- You can use environment feature with approval to implement this, there are two environments: staging and production.
+```
