@@ -104,14 +104,8 @@ jobs:
           NEW_REV=${{ needs.build_and_stage.outputs.newRevision }}
           az containerapp ingress traffic set -n "$APP" -g "$RG" --revision-weight $NEW_REV=100
           # Deactivate any other active revisions (safety if more than one existed)
-          OTHER_REVS=$(az containerapp revision list -n "$APP" -g "$RG" --query "[?active==\`true\` && name!='${NEW_REV}'].name" -o tsv)
+          OTHER_REVS=$(az containerapp revision list -n "$APP" -g "$RG" --query "[?name!='${NEW_REV}'].name" -o tsv)
           for R in $OTHER_REVS; do
             echo "Deactivating old revision $R" || true
             az containerapp revision deactivate -n "$APP" -g "$RG" --revision "$R" || true
           done
-
-      - name: Show active revisions
-        run: az containerapp revision list -n ${{ env.CONTAINER_APP_NAME }} -g ${{ vars.RESOURCE_GROUP_NAME }} --query "[?active==\`true\`].name" -o tsv
-
-      - name: Output URL
-        run: az containerapp show -n ${{ env.CONTAINER_APP_NAME }} -g ${{ vars.RESOURCE_GROUP_NAME }} --query properties.configuration.ingress.fqdn -o tsv
