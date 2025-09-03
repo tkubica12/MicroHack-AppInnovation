@@ -30,6 +30,9 @@ var rgName = 'rg-user${padded}'
 resource rg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   name: rgName
   location: location
+  tags: {
+    SecurityControl: 'ignore'
+  }
 }
 
 // Delegate resource-group scoped infra to workload module
