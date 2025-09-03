@@ -1,0 +1,79 @@
+name: Build and Deploy Lego Catalog (Simple)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'dotnet/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC federated credentials
+
+env:
+  CONTAINER_APP_NAME: lego-catalog-app
+  IMAGE_NAME: lego-catalog/app
+
+jobs:
+  build-and-deploy:
+    name: Build, Push Image & Deploy Container App
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to ACR (az acr login not required for build-push if using docker/login-action)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.ACR_NAME }}.azurecr.io
+          username: 00000000-0000-0000-0000-000000000000
+          password: dummy
+        if: false # We will rely on Azure CLI + az acr login after OIDC auth; keep placeholder disabled to show intent.
+
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: ACR Login via Azure CLI
+        run: az acr login -n ${{ vars.ACR_NAME }}
+
+      - name: Derive image tag
+        id: meta
+        run: |
+          # Use the unique workflow run ID for deterministic, collision-free image tagging
+          # Example tag: run-1234567890
+          echo "tag=run-${GITHUB_RUN_ID}" >> "$GITHUB_OUTPUT"
+
+      - name: Build & Push Image
+        run: |
+          REGISTRY=${{ vars.ACR_NAME }}.azurecr.io
+          IMAGE="$REGISTRY/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}"
+          LATEST="$REGISTRY/${{ env.IMAGE_NAME }}:latest"
+          docker build -t "$IMAGE" -t "$LATEST" -f dotnet/Dockerfile dotnet
+          docker push "$IMAGE"
+          docker push "$LATEST"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Show pushed images
+        run: az acr repository show-tags -n ${{ vars.ACR_NAME }} --repository ${{ env.IMAGE_NAME }} --top 5 --orderby time_desc || true
+
+      - name: Update Container App revision
+        run: |
+          REGISTRY=${{ vars.ACR_NAME }}.azurecr.io
+          IMAGE="$REGISTRY/${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.tag }}"
+          az containerapp update \
+            -n ${{ env.CONTAINER_APP_NAME }} \
+            -g ${{ vars.RESOURCE_GROUP_NAME }} \
+            --image "$IMAGE" \
+            --set-env-vars "IMAGE_VERSION=${{ steps.meta.outputs.tag }}"
+
+      - name: Output URL
+        run: |
+          az containerapp show -n ${{ env.CONTAINER_APP_NAME }} -g ${{ vars.RESOURCE_GROUP_NAME }} --query properties.configuration.ingress.fqdn -o tsv

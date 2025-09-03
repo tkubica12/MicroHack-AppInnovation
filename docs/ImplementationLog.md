@@ -111,6 +111,18 @@
 - Switched Container App from system-assigned to user-assigned managed identity for ACR pulls following official guidance (pre-create identity, grant AcrPull before app deploy) to avoid cold-start race where image pull occurs before role assignment propagates.
 - Added `userAssignedIdentityName` parameter & identity resource, updated role assignment to use identity principalId, configured container registry block with identity resource ID.
 - Exposed identity resource ID in outputs for diagnostics.
+### 2025-09-03 (CI/CD - Simple GitHub Actions workflow)
+- Added `.github/workflows/simple.yaml` triggering on `push` to `main` affecting `dotnet/**` and manual `workflow_dispatch`.
+- Implements OIDC Azure login (id-token permission) using repository variables (`AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`).
+- Builds Docker image from `dotnet/Dockerfile` tagging with workflow run ID (`run-<GITHUB_RUN_ID>`) + `latest`, pushes to ACR `${{ vars.ACR_NAME }}` under repository `lego-catalog/app`.
+- Updates Azure Container App `lego-catalog-app` in resource group `${{ vars.RESOURCE_GROUP_NAME }}` with new image and sets `IMAGE_VERSION` env var.
+- Notes: placeholder disabled docker/login-action kept for future direct push optimization; relies on `az acr login` after Azure CLI OIDC auth.
+### 2025-09-03 (CI/CD - GitHub Actions Managed Identity in Bicep)
+- Extended `solutions/ch03/bicep/main.bicep` with GitHub Actions user-assigned managed identity + federated identity credential (issuer `token.actions.githubusercontent.com`).
+- Added parameters: `githubOrg`, `githubRepo`, `githubBranch`, `githubActionsIdentityName` (defaults set to repository details and `main`).
+- Added Contributor role assignment for identity at resource group scope (guid derived) enabling infrastructure + container app updates.
+- Outputs now include `ghActionsIdentityClientId` / principal & resource IDs for populating GitHub repository variables (`AZURE_CLIENT_ID`).
+- Updated Bicep README documenting new parameters, outputs, and setup instructions for OIDC.
 ## Implementation Log
 
 ### 2025-08-27
