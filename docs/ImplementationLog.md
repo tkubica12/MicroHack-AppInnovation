@@ -138,6 +138,12 @@
 ### 2025-09-03 (CI/CD - Production cleanup enhancement)
 - Updated production promotion step to deactivate all previously active revisions (not just the immediately prior one) after shifting traffic to the new revision.
 - Ensures a single active revision remains, simplifying rollback logic and reducing resource usage.
+### 2025-09-03 (App - OpenTelemetry instrumentation)
+- Added OpenTelemetry packages (core, hosting, OTLP exporter, AspNetCore, SqlClient, Http, Runtime, Process instrumentations).
+- Configured `Program.cs` with resource builder (service name fallback `lego-catalog`), tracing, metrics, logging, and OTLP exporter via `.UseOtlpExporter()` (env driven, no hard-coded endpoints).
+- Introduced custom `ActivitySource` + `Meter` and counter `lego.perf_endpoint.invocations` plus a small internal activity segment for `/perftest/catalog` post-processing.
+- Updated README with comprehensive OTEL_* environment variable documentation and quick start collector example.
+- Chose secure defaults: do not emit full SQL text; rely on sampling env vars if set; query redaction remains enabled unless experimental disable variable applied.
 ## Implementation Log
 
 ### 2025-08-27

@@ -29,10 +29,10 @@ Source code and important documentation for this application is stored in ```dot
 [Challenge](/challenges/ch02/README.md) | [Solution]( /solutions/ch02/README.md)
 
 ### ch03: Implement CI/CD pipeline to automatically deploy changes
-TBD
+[Challenge](/challenges/ch03/README.md) | [Solution]( /solutions/ch03/README.md)
 
 ### ch04: Monitor application performance with tracing
-TBD
+[Challenge](/challenges/ch04/README.md) | [Solution]( /solutions/ch04/README.md)
 
 ### ch05-enterprise: Implement security best practices
 TBD

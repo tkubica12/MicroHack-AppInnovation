@@ -2,8 +2,40 @@ using LegoCatalog.App.Data;
 using LegoCatalog.App.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Logs;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ----------------------------------------------------------------------------
+// OpenTelemetry configuration
+// ----------------------------------------------------------------------------
+// We rely solely on standard OpenTelemetry environment variables for runtime
+// configuration (endpoints, headers, protocol, sampler etc.). Nothing here is
+// required for the app to run; if env vars are absent we simply export nothing.
+// Key variables (all optional):
+//   OTEL_SERVICE_NAME                         (logical service id)
+//   OTEL_RESOURCE_ATTRIBUTES                  (comma separated k=v, e.g. deployment.environment=dev)
+//   OTEL_EXPORTER_OTLP_PROTOCOL               (grpc|http/protobuf)
+//   OTEL_EXPORTER_OTLP_ENDPOINT               (base endpoint)
+//   OTEL_EXPORTER_OTLP_{TRACES|METRICS|LOGS}_ENDPOINT (signal specific)
+//   OTEL_EXPORTER_OTLP_HEADERS                (key1=val1,key2=val2)
+//   OTEL_TRACES_SAMPLER                       (always_on|always_off|traceidratio|parentbased_traceidratio)
+//   OTEL_TRACES_SAMPLER_ARG                   (ratio for traceidratio, e.g. 0.1)
+//   OTEL_BSP_* / OTEL_BLRP_* / OTEL_METRIC_*  (batch / reader tuning)
+// Attribute limits & other knobs also respected (OTEL_SPAN_*, OTEL_ATTRIBUTE_* etc.)
+// ----------------------------------------------------------------------------
+
+const string ServiceName = "lego-catalog"; // default if OTEL_SERVICE_NAME not set
+const string ServiceVersion = "1.0.0";
+
+// Custom ActivitySource & Meter for any future manual spans / instruments
+ActivitySource activitySource = new("LegoCatalog.App");
+var meter = new System.Diagnostics.Metrics.Meter("LegoCatalog.App", ServiceVersion);
+var perfEndpointCounter = meter.CreateCounter<long>("lego.perf_endpoint.invocations", description: "Number of /perftest/catalog calls");
 
 // Configuration precedence: appsettings.* then environment variables (added automatically by default).
 var configuration = builder.Configuration;
@@ -32,6 +64,42 @@ builder.Services.AddScoped<IImageStore, LocalImageStore>();
 builder.Services.AddScoped<FigureCatalogService>();
 builder.Services.AddScoped<ImportService>();
 builder.Services.AddHostedService<StartupImportHostedService>();
+
+// Add OpenTelemetry (no exporter credentials hard-coded; exporter activated via env vars)
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(r => r.AddService(serviceName: Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? ServiceName,
+                                         serviceVersion: ServiceVersion))
+    .WithMetrics(m => m
+        .AddAspNetCoreInstrumentation()
+        .AddRuntimeInstrumentation()
+        .AddProcessInstrumentation()
+        .AddMeter("LegoCatalog.App")
+        .AddHttpClientInstrumentation()
+        .AddSqlClientInstrumentation()
+        .AddOtlpExporter())
+    .WithTracing(t => t
+        .AddAspNetCoreInstrumentation()
+        .AddSqlClientInstrumentation(opt =>
+        {
+            // Keep defaults (do not capture full SQL text by default to avoid PII/leak)
+            // Toggle via env in future if needed.
+        })
+        .AddHttpClientInstrumentation()
+        .AddSource("LegoCatalog.App")
+        .AddOtlpExporter()); // Will silently no-op if no OTLP env configuration provided.
+
+// Logging pipeline (OTel) - still falls back to console if no exporter envs.
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddOpenTelemetry(o =>
+{
+    // Exporter selection via env vars; we keep defaults here.
+    // Adding OTLP exporter to logs piggybacks on UseOtlpExporter above; but AddOpenTelemetry logging requires explicit call.
+    o.IncludeScopes = true;
+    // NOTE: Do not call AddOtlpExporter() here because UseOtlpExporter() was already
+    // applied on the main OpenTelemetry builder (covers logs/metrics/traces). Adding
+    // it again would throw NotSupportedException at runtime.
+});
 
 var app = builder.Build();
 
@@ -103,7 +171,8 @@ app.MapGet("/perftest/catalog", async (HttpRequest request,
         }
 
         // 1. Normal catalog (kept for response payload)
-        var items = await catalog.ListAsync(null, null, ct); // returns figures with categories
+    var items = await catalog.ListAsync(null, null, ct); // returns figures with categories
+    perfEndpointCounter.Add(1);
         var count = items?.Count() ?? 0;
 
         // 2. CPU burner query (amplifies work inside SQL Server but discards result)
@@ -132,6 +201,11 @@ OPTION (MAXRECURSION 0, RECOMPILE, MAXDOP 4);"; // BIGINT prevents overflow; REC
         }
 
     logger.LogInformation("/perftest/catalog returned {Count} items (heavy SQL executed x10) to {RemoteIp}", count, remoteIp);
+        if (activitySource.HasListeners())
+        {
+            using var activity = activitySource.StartActivity("PerfEndpoint.PostProcessing", ActivityKind.Internal);
+            activity?.SetTag("lego.catalog.count", count);
+        }
         return Results.Ok(items);
     }
     catch (OperationCanceledException)

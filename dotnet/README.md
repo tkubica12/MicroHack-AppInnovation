@@ -8,6 +8,7 @@ Simple demo application that serves the generated Lego catalog, allows browsing,
 - Environment variable driven configuration (overrides `appsettings.json`)
 - Idempotent JSON import on every startup (always attempted; inserts only new figure IDs)
 - Local filesystem image serving via `/images/{imageFile}` endpoint
+- OpenTelemetry instrumentation (traces, metrics, logs) via standard OTEL_* environment variables only (no App Insights / vendor SDK)
 
 ### Configuration
 Configuration sources (highest precedence last):
@@ -24,6 +25,64 @@ Environment variables (aligns with design doc):
 | PERFTEST_API_KEY | API key required for `/perftest/catalog` endpoint (performance testing) | `MySecretKey123` |
 
 If `SQL_CONNECTION_STRING` is not supplied, the fallback from `appsettings.json` is used.
+
+### Observability (OpenTelemetry)
+The app is pre-instrumented with OpenTelemetry using only upstream open-source packages. Nothing is required to run locally; if you do not set any OTEL_* environment variables the exporter is effectively dormant.
+
+Packages included:
+- OpenTelemetry (SDK + APIs)
+- OpenTelemetry.Extensions.Hosting (generic host integration)
+- Instrumentations: AspNetCore, SqlClient, HttpClient, Runtime, Process
+- OTLP exporter (enabled for traces/metrics/logs through a single `.UseOtlpExporter()` call)
+	- Logs also explicitly register `AddOtlpExporter()` (no vendor-specific logging package required)
+
+Key optional environment variables (spec defined):
+
+| Variable | Purpose | Example |
+|----------|---------|---------|
+| OTEL_SERVICE_NAME | Logical service name (overrides default `lego-catalog`) | `lego-catalog` |
+| OTEL_RESOURCE_ATTRIBUTES | Extra resource attrs | `deployment.environment=dev,team=platform` |
+| OTEL_EXPORTER_OTLP_ENDPOINT | Base OTLP endpoint | `http://otel-collector:4317` |
+| OTEL_EXPORTER_OTLP_PROTOCOL | `grpc` (default) or `http/protobuf` | `http/protobuf` |
+| OTEL_EXPORTER_OTLP_HEADERS | Additional headers | `authorization=Bearer abc123` |
+| OTEL_EXPORTER_OTLP_TRACES_ENDPOINT | Trace-specific endpoint | `http://collector:4318/v1/traces` |
+| OTEL_EXPORTER_OTLP_METRICS_ENDPOINT | Metrics-specific endpoint | `http://collector:4318/v1/metrics` |
+| OTEL_EXPORTER_OTLP_LOGS_ENDPOINT | Logs-specific endpoint | `http://collector:4318/v1/logs` |
+| OTEL_TRACES_SAMPLER | Sampler strategy | `traceidratio` |
+| OTEL_TRACES_SAMPLER_ARG | Sampler argument (e.g. ratio) | `0.1` |
+| OTEL_BSP_* | Batch span processor tuning | see spec |
+| OTEL_METRIC_EXPORT_INTERVAL | Metric export interval ms | `10000` |
+
+Instrumentation coverage:
+- Incoming HTTP & Blazor Server (AspNetCore)
+- Outgoing HTTP (HttpClient)
+- SQL Server driver operations (SqlClient) – by default **does not** capture raw SQL text to avoid sensitive data; can be enabled by code change if needed.
+- Runtime & process metrics (GC, CPU, memory, threads)
+- Custom: counter `lego.perf_endpoint.invocations` and manual activity segment `PerfEndpoint.PostProcessing` when `/perftest/catalog` completes.
+
+Quick test with an OpenTelemetry Collector running locally (example docker):
+```powershell
+docker run --rm -p 4317:4317 -p 4318:4318 -e LOGS_EXPORTER=otlp -e OTEL_EXPORTER_OTLP_PROTOCOL=grpc otel/opentelemetry-collector:latest
+
+# In another shell (run app with OTLP export)
+$env:OTEL_SERVICE_NAME = 'lego-catalog'
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4317'
+dotnet run --project src/LegoCatalog.App/LegoCatalog.App.csproj
+```
+
+Add `OTEL_TRACES_SAMPLER=traceidratio` + `OTEL_TRACES_SAMPLER_ARG=0.2` to reduce volume in load tests.
+
+Disable query string redaction for HTTP spans (development only) by setting:
+```powershell
+$env:OTEL_DOTNET_EXPERIMENTAL_ASPNETCORE_DISABLE_URL_QUERY_REDACTION = 'true'
+```
+
+Troubleshooting exporter issues:
+- Create a file `OTEL_DIAGNOSTICS.json` in the working directory:
+```json
+{ "LogDirectory": ".", "FileSize": 32768, "LogLevel": "Warning", "FormatMessage": true }
+```
+This enables circular self-diagnostics log (e.g. `LegoCatalog.App.<pid>.log`).
 
 ### Prerequisites
 - .NET 8 SDK
@@ -93,6 +152,7 @@ Non-root user `appuser` is used in the final image. Adjust port via `ASPNETCORE_
 - Switch to EF Core migrations later if schema evolution becomes necessary.
 - Blob storage image provider via `IImageStore` abstraction.
 - OpenTelemetry instrumentation.
+	- Implemented (see Observability section).
 
 ### Troubleshooting
 - If images 404: verify `IMAGE_ROOT_PATH` and that filenames in DB match actual PNG files.

@@ -1,7 +1,7 @@
 # Test autoscaling under load
 
 ## Goal
-In this challenge we will put our uplication under load to make sure auto-scaling work properly. Note this application is using Blazor technology which uses SignalR (WebSockets with fallback to long polling) which might make testing little more challenging.
+In this challenge we will put our application under load to make sure auto-scaling work properly. Note this application is using Blazor technology which uses SignalR (WebSockets with fallback to long polling) which might make testing little more challenging.
 
 ## Actions
 - OPTIONAL: Experience slow-start by decreasing coll-down in Azure Container App to 5 minutes and set auto-pause of SQL to 15 minutes (which is minimum) and wait. Then open browser and measure time for application and database to get started. It takes some time - for what use cases this is viable option?
