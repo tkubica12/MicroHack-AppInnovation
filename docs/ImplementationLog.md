@@ -135,6 +135,9 @@
 - Staging job builds & pushes image (tag = run id), creates new revision, forces 0% traffic to new revision (old stays 100%) and exports revision names.
 - Production job (after manual approval) shifts traffic to new revision (100%) and deactivates previous revision to reduce drift.
 - Supports blue/green style promotion using Azure Container Apps multiple revisions mode and GitHub Environments gating.
+### 2025-09-03 (CI/CD - Production cleanup enhancement)
+- Updated production promotion step to deactivate all previously active revisions (not just the immediately prior one) after shifting traffic to the new revision.
+- Ensures a single active revision remains, simplifying rollback logic and reducing resource usage.
 ## Implementation Log
 
 ### 2025-08-27

@@ -5,7 +5,7 @@ We will expect infrastructure is already deployed including Azure Container App.
 We will create GitHub Actions workflow. Make sure Dockerfile is present in ```dotnet``` folder. You can use GitHub Copilot to help you with this, here is example prompt to start with:
 
 ```
-Create GitHub Actions workflow and place it into .github/workflows/simple.yaml
+Create GitHub Actions workflow and place it into .github/workflows/deploy.yaml
 - Start automatically when changes are made to the `dotnet/` folder in main branch
 - Add manual start as alternative
 - Build and push Docker image to Azure Container Registry. Name of registry will be provided by repository variable $ACR_NAME.
@@ -45,9 +45,17 @@ Let's modify GitHub Actions workflow to support multiple revisions in Azure Cont
 Here is example prompt:
 
 ```
-Change .github/workflows/simple.yaml to support multiple revisions in Azure Container Apps
+Change .github/workflows/deploy.yaml to support multiple revisions in Azure Container Apps
 - Changes in container should be deployed into Azure Container App which is in multiple mode for revision so it is deployed yet not active for users.
 - After this manual approval must be done in pipeline to continue
 - After approval new revision should receive 100% of traffic and previous revision should be deactivated.
 - You can use environment feature with approval to implement this, there are two environments: staging and production.
 ```
+
+You will also need to configure approval to deploy to production environment in GitHub.
+
+![](/images/ch03-env-approval.png)
+
+Now look into Azure Portal to check new revision. Click on it, get its url. see how it works.
+
+If you are ready go to GitHub and approve the deployment to production.

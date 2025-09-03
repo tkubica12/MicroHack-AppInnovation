@@ -97,16 +97,18 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Shift traffic to new revision
+      - name: Shift traffic & deactivate previous revisions
         run: |
           RG=${{ vars.RESOURCE_GROUP_NAME }}
           APP=${{ env.CONTAINER_APP_NAME }}
           NEW_REV=${{ needs.build_and_stage.outputs.newRevision }}
-          OLD_REV=${{ needs.build_and_stage.outputs.oldRevision }}
           az containerapp ingress traffic set -n "$APP" -g "$RG" --revision-weight $NEW_REV=100
-          if [ -n "$OLD_REV" ]; then
-            az containerapp revision deactivate -n "$APP" -g "$RG" --revision "$OLD_REV" || true
-          fi
+          # Deactivate any other active revisions (safety if more than one existed)
+          OTHER_REVS=$(az containerapp revision list -n "$APP" -g "$RG" --query "[?active==\`true\` && name!='${NEW_REV}'].name" -o tsv)
+          for R in $OTHER_REVS; do
+            echo "Deactivating old revision $R" || true
+            az containerapp revision deactivate -n "$APP" -g "$RG" --revision "$R" || true
+          done
 
       - name: Show active revisions
         run: az containerapp revision list -n ${{ env.CONTAINER_APP_NAME }} -g ${{ vars.RESOURCE_GROUP_NAME }} --query "[?active==\`true\`].name" -o tsv
