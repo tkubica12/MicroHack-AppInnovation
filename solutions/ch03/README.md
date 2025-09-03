@@ -56,6 +56,8 @@ You will also need to configure approval to deploy to production environment in 
 
 ![](/images/ch03-env-approval.png)
 
-Now look into Azure Portal to check new revision. Click on it, get its url. see how it works.
+Now look into Azure Portal to check new revision. Click on it, get its url, see how application it works.
 
 If you are ready go to GitHub and approve the deployment to production.
+
+![](/images/ch03-approval.png)
