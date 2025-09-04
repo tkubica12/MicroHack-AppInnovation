@@ -153,6 +153,10 @@
 - Exposed outputs for connection string and resource names (or 'disabled' sentinel) to aid testing and GitHub workflows.
 ### 2025-09-03 (Infrastructure - RG tagging for security exemption)
 - Added `SecurityControl=ignore` tag to per-user resource group in `baseInfra/bicep/userInfra.bicep` to satisfy security scanning exemption requirement.
+### 2025-09-04 (Infrastructure - subnet ID dependency fix)
+- Replaced `resourceId('Microsoft.Network/virtualNetworks/subnets', ...)` usages in `workload.bicep` with `${vnet.id}/subnets/<name>` interpolations to create implicit dependencies. Prevents potential race where Bastion/NIC might deploy before inline subnets materialize (resourceId() alone is a pure string and does not infer `dependsOn`).
+### 2025-09-04 (Infrastructure - VM extension parent refactor)
+- Updated `vmSetup` virtual machine extension in `workload.bicep` to use `parent: vm` and simple `name: 'setup'` instead of concatenated `${vm.name}/setup`, aligning with Bicep child resource best practices (implicit dependency & clearer diff).
 ## Implementation Log
 
 ### 2025-08-27

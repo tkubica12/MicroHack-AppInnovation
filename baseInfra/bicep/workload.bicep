@@ -146,7 +146,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-04-01' = {
         name: 'ipconfig'
         properties: {
           subnet: {
-            id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, vmsSubnetName)
+            id: '${vnet.id}/subnets/${vmsSubnetName}'
           }
           privateIPAllocationMethod: 'Dynamic'
         }
@@ -174,7 +174,7 @@ resource bastion 'Microsoft.Network/bastionHosts@2023-04-01' = {
         name: 'bastionIpConfig'
         properties: {
           subnet: {
-            id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, bastionSubnetName)
+            id: '${vnet.id}/subnets/${bastionSubnetName}'
           }
           publicIPAddress: {
             id: publicIp.id
@@ -239,9 +239,10 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
   ]
 }
 
-// Custom Script Extension to run provisioning script (creates desktop shortcut etc.)
+// Custom Script Extension (declared as child using parent property for implicit dependency & cleaner name)
 resource vmSetup 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
-  name: '${vm.name}/setup'
+  name: 'setup'
+  parent: vm
   location: location
   properties: {
     publisher: 'Microsoft.Compute'
@@ -253,7 +254,6 @@ resource vmSetup 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
       commandToExecute: 'powershell -ExecutionPolicy Bypass -File setup.ps1'
     }
   }
-  dependsOn: [ vm ]
 }
 
 output publicIpName string = pipName
