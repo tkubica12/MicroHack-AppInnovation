@@ -11,6 +11,7 @@ In this challenge you will take steps to migrate application from single Virtual
 
 ## Success Criteria
 - Application is fully functional in Azure environment.
+- Application and database are deployed separately.
 
 ## Solution - Spoilerwarning
 [Solution Steps](/solutions/ch01/README.md)

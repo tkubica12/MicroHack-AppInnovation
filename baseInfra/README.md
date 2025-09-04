@@ -1,6 +1,8 @@
 # Base infrastructure
 This folder contains base starting Azure infrastructure for MicroHack App Innovation.
 
+**Note: This section is for facilitator only who will deploy it before the session.**
+
 Current scope (incremental):
 - Subscription level Bicep templates to create `n` user environments each containing:
 	- Resource Group (`rg-user<NNN>`)
@@ -23,12 +25,14 @@ Files under `bicep/`:
 
 All templates are idempotent; re‑deploying with the same parameters performs no destructive changes. Reducing `n` currently does NOT delete previously created higher index groups (deployment stacks can manage deletion – see below). Names follow `<typeAbbrev>-user###` pattern for clarity.
 
+Under `scripts` there is a PowerShell script `setup.ps1` that is automatically executed during VM provisioning to install required software and configure the environment.
+
 ## Deploy with Azure Deployment Stacks
 Azure Deployment Stacks give us lifecycle management (including bulk delete) for all resources a template manages.
 
 Prerequisites (once per subscription):
 ```pwsh
-az login                        # if not already logged in
+az login
 az account set -s <SUBSCRIPTION_ID_OR_NAME>
 ```
 
@@ -75,7 +79,7 @@ Add future infra components by extending `userInfra.bicep` (new modules) or enha
 ## Connect to a VM and run the sample app
 Each per‑user environment provisions:
 - A Windows Server VM (`vm-user<NNN>`)
-- Azure Bastion (using the shared Public IP) for secure RDP in the portal
+- Azure Bastion for secure RDP in the portal
 - A Custom Script Extension that installs Git, .NET SDK 8.0.413, SQL Express, clones this repo, and creates a desktop shortcut to run the app
 - A NAT Gateway providing scalable outbound SNAT; the VM NIC has no public IP and egress IP is `pip-nat-user<NNN>` (visible via external services like ifconfig.me)
 
@@ -85,11 +89,7 @@ Each per‑user environment provisions:
 3. Click "Connect" (RDP over Bastion) and when prompted use:
 	- Username: `azureuser`
 	- Password: `Azure12345678`
-4. Once the desktop session loads you should see a shortcut named **LegoCatalog App**.
-5. Double‑click the shortcut. It will:
-	- Launch a PowerShell window
-	- Start the app with `dotnet run`
-	- Open your default browser to `http://localhost:5000` (give it a few seconds)
+4. There are two PowerShell scripts provisioned on `c:\`. One is to start web application and the other is for setting up the developer environment (recommended path if you plan to use VM as dev station).
 
 If the browser does not open automatically, manually navigate to `http://localhost:5000` in the VM.
 
@@ -97,3 +97,5 @@ If the browser does not open automatically, manually navigate to `http://localho
 - The provisioning script runs only once (via Custom Script Extension). If you change the script and want to reapply, redeploy the extension (update its settings or remove & redeploy) or run `C:\Apps\LegoCatalog\start-app.ps1` manually.
 - The provided credentials are for demo only; rotate them for anything beyond a lab scenario.
 - Bastion allows RDP only from within the virtual network; direct public RDP is blocked by NSG design.
+
+**IMPORTANT: If you are running in managed secured tenant environment there are security policies in place. While those take effect typically only next day so should not affect 1-day session beware you might need to re-enable public network access on storage and Azure SQL and also allow shared key access on storage account so Azure Files get correctly mounted to Azure Container Apps and app can access Azure SQL.** We are doing this in order to not overwhelm participants with strict security initially, challenge 5 works on some of those security enhancements. Nevertheless note Azure Container Apps as time of this writing (Septmember 2025) do not support Entra authentication to Azure Files.
