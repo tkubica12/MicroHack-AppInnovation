@@ -11,7 +11,7 @@
   "remoteUser": "vscode",
   "workspaceFolder": "/workspaces/MicroHack-AppInnovation",
   "updateContentCommand": "dotnet restore ./dotnet || true",
-  "postCreateCommand": "az version && azd version && dotnet --info && (docker ps --format '{{.Names}}' | grep -q microhack-sql || docker run -d --name microhack-sql -e ACCEPT_EULA=Y -e MSSQL_PID=Express -e MSSQL_SA_PASSWORD=$MSSQL_SA_PASSWORD -p 1433:1433 -v microhack-sql-data:/var/opt/mssql mcr.microsoft.com/mssql/server:2022-latest)",
+  "postCreateCommand": "az version && azd version && dotnet --info",
   "features": {},
   "customizations": {
     "vscode": {
