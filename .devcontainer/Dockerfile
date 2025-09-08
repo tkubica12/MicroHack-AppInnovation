@@ -2,8 +2,9 @@
 ## Base: Official devcontainers .NET 8 image (includes common tooling, non-root "vscode" user)
 FROM mcr.microsoft.com/devcontainers/dotnet:1-8.0-bookworm
 
+# Allow normal .NET patch roll-forward (previously disabled causing 8.0.0 vs 8.0.x runtime mismatch)
 ENV DEBIAN_FRONTEND=noninteractive \
-    DOTNET_ROLL_FORWARD=disable \
+    DOTNET_ROLL_FORWARD=LatestPatch \
     DOTNET_CLI_TELEMETRY_OPTOUT=1 \
     AZURE_CORE_ONLY_SHOW_ERRORS=1
 
@@ -12,7 +13,7 @@ USER root
 # Install prerequisites & Azure CLI
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       ca-certificates curl gnupg lsb-release jq unzip git bash-completion \
+    ca-certificates curl gnupg lsb-release jq unzip git bash-completion \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/microsoft.gpg] https://packages.microsoft.com/repos/azure-cli/ $(lsb_release -cs) main" > /etc/apt/sources.list.d/azure-cli.list \

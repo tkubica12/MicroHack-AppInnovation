@@ -160,6 +160,15 @@
 - Created workspace file `MicroHack-AppInnovation.code-workspace` with recommended extensions & solution focus.
 - Rationale: consistent Linux environment across contributors (macOS/Windows hosts) with pinned .NET 8 toolchain & Azure CLIs, enabling infra (Bicep) + app (Container Apps) workflows.
 - Notes: `postCreateCommand` surfaces versions for quick diagnostics; Docker group membership enables image build via host daemon; telemetry disabled for reproducibility.
+### 2025-09-08 (Dev Experience - Dev Container .NET roll-forward fix)
+- Removed `DOTNET_ROLL_FORWARD=disable` (set to `LatestPatch`) in `.devcontainer/Dockerfile` to allow patch roll-forward (previous setting caused runtime error when app built for 8.0.0 but only 8.0.19 present).
+- Rationale: default behavior (LatestPatch) ensures security updates & avoids manual pin churn while keeping major/minor stable.
+- No code changes required in application; rebuild dev container to apply (`Rebuild Container`).
+### 2025-09-08 (Dev Experience - SQL Server Express sidecar)
+- Updated `devcontainer.json` `postCreateCommand` to launch a persistent `microhack-sql` container (`mcr.microsoft.com/mssql/server:2022-latest`, `MSSQL_PID=Express`).
+- Added `MSSQL_SA_PASSWORD` env var (placeholder `YourStrong!Passw0rd!` – recommend override via local customization) and mapped port 1433 for host access.
+- Data persisted in named Docker volume `microhack-sql-data`; startup idempotent (skips if container already exists).
+- Rationale: sidecar container avoids complexity of running SQL Server service inside main dev container (no systemd), keeps image lean, and mirrors production external DB topology.
 ## Implementation Log
 
 ### 2025-08-27
