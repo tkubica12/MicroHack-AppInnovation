@@ -153,6 +153,13 @@
 - Exposed outputs for connection string and resource names (or 'disabled' sentinel) to aid testing and GitHub workflows.
 ### 2025-09-03 (Infrastructure - RG tagging for security exemption)
 - Added `SecurityControl=ignore` tag to per-user resource group in `baseInfra/bicep/userInfra.bicep` to satisfy security scanning exemption requirement.
+### 2025-09-08 (Dev Experience - VS Code Dev Container)
+- Added `.devcontainer/` with `Dockerfile` (base `mcr.microsoft.com/devcontainers/dotnet:1-8.0-bookworm`) installing Azure CLI, azd, and upgrading Bicep CLI.
+- Included Docker CLI & mounted host Docker socket for building/testing container images inside the dev container.
+- Added `devcontainer.json` configuring extensions: C# (`ms-dotnettools.csharp`), Bicep, Docker, GitHub Copilot + Chat; sets default solution and restores on open.
+- Created workspace file `MicroHack-AppInnovation.code-workspace` with recommended extensions & solution focus.
+- Rationale: consistent Linux environment across contributors (macOS/Windows hosts) with pinned .NET 8 toolchain & Azure CLIs, enabling infra (Bicep) + app (Container Apps) workflows.
+- Notes: `postCreateCommand` surfaces versions for quick diagnostics; Docker group membership enables image build via host daemon; telemetry disabled for reproducibility.
 ## Implementation Log
 
 ### 2025-08-27
