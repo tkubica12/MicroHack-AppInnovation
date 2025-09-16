@@ -158,6 +158,15 @@
 ### 2025-09-04 (Infrastructure - VM extension parent refactor)
 - Updated `vmSetup` virtual machine extension in `workload.bicep` to use `parent: vm` and simple `name: 'setup'` instead of concatenated `${vm.name}/setup`, aligning with Bicep child resource best practices (implicit dependency & clearer diff).
 ## Implementation Log
+### YYYY-MM-DD Split setup script into modular stages
+Refactored `baseInfra/scripts/setup.ps1` into an orchestration-only script. Added modular scripts:
+* `SQL_install.ps1` – installs & configures SQL Server (static TCP 1433 + firewall), installs `sqlcmd`, provisions DB/login.
+* `App_install.ps1` – installs .NET SDK if needed, downloads source, creates start script using static port connection string.
+* `Dev_install_initial.ps1` – enables WSL + VirtualMachinePlatform, creates reboot sentinel if needed.
+* `Dev_install_post_reboot.ps1` – installs developer tooling after reboot, then cleans up scheduled task & sentinel.
+
+Introduced status tracking file `C:\install_status.txt` with stages: `sql`, `app`, `dev`, `devpost` each set to `pending|running|failed|success`. Orchestrator is idempotent and skips completed stages.
+
 
 ### 2025-08-27
 Initial implementation of Python data generator (`main.py`):
