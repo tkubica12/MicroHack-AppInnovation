@@ -52,12 +52,39 @@ function Resolve-WingetPath {
 }
 
 function Install-Pkg {
-    param([string]$WingetPath,[string]$Id)
-    Write-Host "[DevTools] Installing $Id"
+    param(
+        [string]$WingetPath,
+        [string]$Id,
+        [switch]$MachineScope,
+        [string]$FallbackUrl
+    )
+    Write-Host "[DevTools] Installing $Id";
+    $args = @('install', "--id=$Id", '-e', '--accept-package-agreements', '--accept-source-agreements', '-h')
+    if ($MachineScope) { $args += '--scope'; $args += 'machine' }
     try {
-        & $WingetPath install --id=$Id -e --accept-package-agreements --accept-source-agreements -h
-        if ($LASTEXITCODE -ne 0) { Write-Warning "[DevTools] winget exit code $LASTEXITCODE for $Id" }
-    } catch { Write-Warning "[DevTools] Exception installing $Id : $($_.Exception.Message)" }
+        & $WingetPath @args
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warning "[DevTools] winget exit code $LASTEXITCODE for $Id"
+            if ($MachineScope -and $FallbackUrl) {
+                Write-Warning "[DevTools] Attempting fallback system installer for $Id from $FallbackUrl"
+                $tmp = Join-Path $env:TEMP (Split-Path $FallbackUrl -Leaf)
+                try {
+                    Invoke-WebRequest -Uri $FallbackUrl -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+                    Start-Process $tmp -ArgumentList '/VERYSILENT','/NORESTART' -Wait -NoNewWindow
+                } catch { Write-Warning "[DevTools] Fallback install failed for $Id : $($_.Exception.Message)" }
+            }
+        }
+    } catch {
+        Write-Warning "[DevTools] Exception installing $Id : $($_.Exception.Message)"
+        if ($MachineScope -and $FallbackUrl) {
+            Write-Warning "[DevTools] Attempting fallback system installer for $Id after exception"
+            $tmp = Join-Path $env:TEMP (Split-Path $FallbackUrl -Leaf)
+            try {
+                Invoke-WebRequest -Uri $FallbackUrl -OutFile $tmp -UseBasicParsing -ErrorAction Stop
+                Start-Process $tmp -ArgumentList '/VERYSILENT','/NORESTART' -Wait -NoNewWindow
+            } catch { Write-Warning "[DevTools] Fallback install failed for $Id : $($_.Exception.Message)" }
+        }
+    }
 }
 
 # Retry to locate winget (may not yet be in PATH under SYSTEM at early boot)
@@ -73,7 +100,7 @@ if (-not $wingetPath) {
     Fail "winget not found after $WingetMaxRetries attempts; leaving task & sentinel for retry."
 }
 
-Install-Pkg $wingetPath 'Microsoft.VisualStudioCode'
+Install-Pkg $wingetPath 'Microsoft.VisualStudioCode' -MachineScope -FallbackUrl 'https://update.code.visualstudio.com/latest/win32-x64-user/stable'
 Install-Pkg $wingetPath 'Microsoft.AzureCLI'
 Install-Pkg $wingetPath 'SUSE.RancherDesktop'
 Install-Pkg $wingetPath 'Microsoft.SQLServerManagementStudio'

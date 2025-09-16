@@ -255,3 +255,11 @@ Deferred (documented for future): blob image store, telemetry.
 - Simplified `userInfra.bicep` to only create RG and call workload module.
 - Addressed Bicep scope errors (BCP037/BCP139) and removed unnecessary dependsOn warnings.
 - Updated README to document new module list.
+### 2025-09-16 (Infrastructure - multi-script Custom Script Extension)
+- Updated `baseInfra/bicep/workload.bicep` Custom Script Extension to download all modular provisioning scripts (`setup.ps1` orchestrator plus stage scripts: `SQL_install.ps1`, `App_install.ps1`, `Dev_install_initial.ps1`, `Dev_install_post_reboot.ps1`).
+- Rationale: ensures orchestrator has local copies for idempotent stage execution and post-reboot scheduled task without needing additional network fetches beyond initial extension run.
+- Implemented via new variables listing each raw GitHub URL and aggregated `provisioningScriptFiles` array passed to `fileUris`.
+### 2025-09-16 (Dev Tools - system-wide VS Code)
+- Modified `Dev_install_post_reboot.ps1` to install Visual Studio Code with `--scope machine` via winget.
+- Added fallback to direct system installer download if winget machine-scope install returns non-zero exit code or throws.
+- Rationale: original per-user install failed when script ran under SYSTEM before a user profile existed.
