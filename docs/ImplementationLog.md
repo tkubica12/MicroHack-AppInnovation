@@ -153,10 +153,22 @@
 - Exposed outputs for connection string and resource names (or 'disabled' sentinel) to aid testing and GitHub workflows.
 ### 2025-09-03 (Infrastructure - RG tagging for security exemption)
 - Added `SecurityControl=ignore` tag to per-user resource group in `baseInfra/bicep/userInfra.bicep` to satisfy security scanning exemption requirement.
-### 2025-09-04 (Infrastructure - subnet ID dependency fix)
-- Replaced `resourceId('Microsoft.Network/virtualNetworks/subnets', ...)` usages in `workload.bicep` with `${vnet.id}/subnets/<name>` interpolations to create implicit dependencies. Prevents potential race where Bastion/NIC might deploy before inline subnets materialize (resourceId() alone is a pure string and does not infer `dependsOn`).
-### 2025-09-04 (Infrastructure - VM extension parent refactor)
-- Updated `vmSetup` virtual machine extension in `workload.bicep` to use `parent: vm` and simple `name: 'setup'` instead of concatenated `${vm.name}/setup`, aligning with Bicep child resource best practices (implicit dependency & clearer diff).
+### 2025-09-08 (Dev Experience - VS Code Dev Container)
+- Added `.devcontainer/` with `Dockerfile` (base `mcr.microsoft.com/devcontainers/dotnet:1-8.0-bookworm`) installing Azure CLI, azd, and upgrading Bicep CLI.
+- Included Docker CLI & mounted host Docker socket for building/testing container images inside the dev container.
+- Added `devcontainer.json` configuring extensions: C# (`ms-dotnettools.csharp`), Bicep, Docker, GitHub Copilot + Chat; sets default solution and restores on open.
+- Created workspace file `MicroHack-AppInnovation.code-workspace` with recommended extensions & solution focus.
+- Rationale: consistent Linux environment across contributors (macOS/Windows hosts) with pinned .NET 8 toolchain & Azure CLIs, enabling infra (Bicep) + app (Container Apps) workflows.
+- Notes: `postCreateCommand` surfaces versions for quick diagnostics; Docker group membership enables image build via host daemon; telemetry disabled for reproducibility.
+### 2025-09-08 (Dev Experience - Dev Container .NET roll-forward fix)
+- Removed `DOTNET_ROLL_FORWARD=disable` (set to `LatestPatch`) in `.devcontainer/Dockerfile` to allow patch roll-forward (previous setting caused runtime error when app built for 8.0.0 but only 8.0.19 present).
+- Rationale: default behavior (LatestPatch) ensures security updates & avoids manual pin churn while keeping major/minor stable.
+- No code changes required in application; rebuild dev container to apply (`Rebuild Container`).
+### 2025-09-08 (Dev Experience - SQL Server Express sidecar)
+- Updated `devcontainer.json` `postCreateCommand` to launch a persistent `microhack-sql` container (`mcr.microsoft.com/mssql/server:2022-latest`, `MSSQL_PID=Express`).
+- Added `MSSQL_SA_PASSWORD` env var (placeholder `YourStrong!Passw0rd!` – recommend override via local customization) and mapped port 1433 for host access.
+- Data persisted in named Docker volume `microhack-sql-data`; startup idempotent (skips if container already exists).
+- Rationale: sidecar container avoids complexity of running SQL Server service inside main dev container (no systemd), keeps image lean, and mirrors production external DB topology.
 ## Implementation Log
 ### YYYY-MM-DD Split setup script into modular stages
 Refactored `baseInfra/scripts/setup.ps1` into an orchestration-only script. Added modular scripts:

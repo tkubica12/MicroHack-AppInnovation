@@ -1,0 +1,45 @@
+{
+  "name": "MicroHack-AppInnovation",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "runArgs": [
+    "-v",
+    "/var/run/docker.sock:/var/run/docker.sock"
+  ],
+  "remoteUser": "vscode",
+  "workspaceFolder": "/workspaces/MicroHack-AppInnovation",
+  "updateContentCommand": "dotnet restore ./dotnet || true",
+  "postCreateCommand": "az version && azd version && dotnet --info",
+  "features": {},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csharp",
+        "ms-azuretools.vscode-bicep",
+        "ms-azuretools.vscode-docker",
+        "GitHub.copilot",
+        "GitHub.copilot-chat"
+      ],
+      "settings": {
+        "dotnet.defaultSolution": "dotnet/LegoCatalog.sln",
+        "editor.formatOnSave": true,
+        "bicep.trace.server": "Off",
+        "bicep.suppressGitIgnoreWarning": true,
+        "github.copilot.enable": {
+          "*": true
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder}/data,target=/workspaces/MicroHack-AppInnovation/data,type=bind"
+  ],
+  "containerEnv": {
+    "ASPNETCORE_ENVIRONMENT": "Development",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "MSSQL_SA_PASSWORD": "YourStrong!Passw0rd!"
+  }
+}
