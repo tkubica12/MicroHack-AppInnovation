@@ -30,8 +30,20 @@ var nsgName = 'nsg-user${padded}'
 var nicName = 'nic-user${padded}'
 var vmName = 'vm-user${padded}'
 var natGatewayName = 'nat-user${padded}'
-// URL of provisioning script to execute via Custom Script Extension
+// URLs of all provisioning scripts (orchestrator + stage scripts) to be downloaded by the Custom Script Extension
+// Keeping explicit list (vs directory enumeration) for deterministic deployments and to avoid unnecessary downloads.
 var setupScriptUrl = 'https://github.com/tkubica12/MicroHack-AppInnovation/raw/refs/heads/main/baseInfra/scripts/setup.ps1'
+var sqlInstallScriptUrl = 'https://github.com/tkubica12/MicroHack-AppInnovation/raw/refs/heads/main/baseInfra/scripts/SQL_install.ps1'
+var appInstallScriptUrl = 'https://github.com/tkubica12/MicroHack-AppInnovation/raw/refs/heads/main/baseInfra/scripts/App_install.ps1'
+var devInstallInitialScriptUrl = 'https://github.com/tkubica12/MicroHack-AppInnovation/raw/refs/heads/main/baseInfra/scripts/Dev_install_initial.ps1'
+var devInstallPostRebootScriptUrl = 'https://github.com/tkubica12/MicroHack-AppInnovation/raw/refs/heads/main/baseInfra/scripts/Dev_install_post_reboot.ps1'
+var provisioningScriptFiles = [
+  setupScriptUrl
+  sqlInstallScriptUrl
+  appInstallScriptUrl
+  devInstallInitialScriptUrl
+  devInstallPostRebootScriptUrl
+]
 
 // Derived address space now /22 giving room for multiple /24 segments: 10.X.0.0 - 10.X.3.255
 var derivedVnetCidr = '10.${userIndex}.0.0/22'
@@ -146,7 +158,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2023-04-01' = {
         name: 'ipconfig'
         properties: {
           subnet: {
-            id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, vmsSubnetName)
+            id: '${vnet.id}/subnets/${vmsSubnetName}'
           }
           privateIPAllocationMethod: 'Dynamic'
         }
@@ -174,7 +186,7 @@ resource bastion 'Microsoft.Network/bastionHosts@2023-04-01' = {
         name: 'bastionIpConfig'
         properties: {
           subnet: {
-            id: resourceId('Microsoft.Network/virtualNetworks/subnets', vnetName, bastionSubnetName)
+            id: '${vnet.id}/subnets/${bastionSubnetName}'
           }
           publicIPAddress: {
             id: publicIp.id
@@ -239,9 +251,10 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-09-01' = {
   ]
 }
 
-// Custom Script Extension to run provisioning script (creates desktop shortcut etc.)
+// Custom Script Extension (declared as child using parent property for implicit dependency & cleaner name)
 resource vmSetup 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
-  name: '${vm.name}/setup'
+  name: 'setup'
+  parent: vm
   location: location
   properties: {
     publisher: 'Microsoft.Compute'
@@ -249,11 +262,11 @@ resource vmSetup 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
     typeHandlerVersion: '1.10'
     autoUpgradeMinorVersion: true
     protectedSettings: {
-      fileUris: [ setupScriptUrl ]
+      // Download all scripts; orchestrator (setup.ps1) invokes the others.
+      fileUris: provisioningScriptFiles
       commandToExecute: 'powershell -ExecutionPolicy Bypass -File setup.ps1'
     }
   }
-  dependsOn: [ vm ]
 }
 
 output publicIpName string = pipName

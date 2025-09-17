@@ -43,7 +43,7 @@ After VM starts use PowerShell script ```C:\start-app.ps1``` to run your applica
 
 You can also use this VM as your developer station. To quickly install tools such as Docker environment, Azure CLI, SQL Server Management Studio, git and Visual Studio Code execute PowerShell script ```C:\dev-tools-install.ps1```. You may also use your local computer or GitHub Codespaces for this MicroHack if you prefer.
 
-Source code and important documentation for this application is stored in ```dotenet``` folder of this repository. In order to automate CI/CD later in a lab we suggest to clone this repo into your development environment.
+Source code and important documentation for this application is stored in ```dotnet``` folder of this repository. In order to automate CI/CD later in a lab we suggest to clone this repo into your development environment.
 
 ### ch01: Migrate database, containerize application, deploy to Azure
 [Challenge](/challenges/ch01/README.md) | [Solution]( /solutions/ch01/README.md)

@@ -170,6 +170,15 @@
 - Data persisted in named Docker volume `microhack-sql-data`; startup idempotent (skips if container already exists).
 - Rationale: sidecar container avoids complexity of running SQL Server service inside main dev container (no systemd), keeps image lean, and mirrors production external DB topology.
 ## Implementation Log
+### YYYY-MM-DD Split setup script into modular stages
+Refactored `baseInfra/scripts/setup.ps1` into an orchestration-only script. Added modular scripts:
+* `SQL_install.ps1` – installs & configures SQL Server (static TCP 1433 + firewall), installs `sqlcmd`, provisions DB/login.
+* `App_install.ps1` – installs .NET SDK if needed, downloads source, creates start script using static port connection string.
+* `Dev_install_initial.ps1` – enables WSL + VirtualMachinePlatform, creates reboot sentinel if needed.
+* `Dev_install_post_reboot.ps1` – installs developer tooling after reboot, then cleans up scheduled task & sentinel.
+
+Introduced status tracking file `C:\install_status.txt` with stages: `sql`, `app`, `dev`, `devpost` each set to `pending|running|failed|success`. Orchestrator is idempotent and skips completed stages.
+
 
 ### 2025-08-27
 Initial implementation of Python data generator (`main.py`):
@@ -258,3 +267,11 @@ Deferred (documented for future): blob image store, telemetry.
 - Simplified `userInfra.bicep` to only create RG and call workload module.
 - Addressed Bicep scope errors (BCP037/BCP139) and removed unnecessary dependsOn warnings.
 - Updated README to document new module list.
+### 2025-09-16 (Infrastructure - multi-script Custom Script Extension)
+- Updated `baseInfra/bicep/workload.bicep` Custom Script Extension to download all modular provisioning scripts (`setup.ps1` orchestrator plus stage scripts: `SQL_install.ps1`, `App_install.ps1`, `Dev_install_initial.ps1`, `Dev_install_post_reboot.ps1`).
+- Rationale: ensures orchestrator has local copies for idempotent stage execution and post-reboot scheduled task without needing additional network fetches beyond initial extension run.
+- Implemented via new variables listing each raw GitHub URL and aggregated `provisioningScriptFiles` array passed to `fileUris`.
+### 2025-09-16 (Dev Tools - system-wide VS Code)
+- Modified `Dev_install_post_reboot.ps1` to install Visual Studio Code with `--scope machine` via winget.
+- Added fallback to direct system installer download if winget machine-scope install returns non-zero exit code or throws.
+- Rationale: original per-user install failed when script ran under SYSTEM before a user profile existed.
