@@ -275,3 +275,46 @@ Deferred (documented for future): blob image store, telemetry.
 - Modified `Dev_install_post_reboot.ps1` to install Visual Studio Code with `--scope machine` via winget.
 - Added fallback to direct system installer download if winget machine-scope install returns non-zero exit code or throws.
 - Rationale: original per-user install failed when script ran under SYSTEM before a user profile existed.
+### 2025-09-19 (Infrastructure - Terraform azapi translation)
+- Added Terraform implementation (`baseInfra/terraform`) mirroring Bicep per-user environment deployment using `azapi_resource` for all Azure resource types.
+- Root module loops `n` user environments via `for_each` on range; each environment module provisions RG, Public IPs, NAT Gateway, NSG, VNet + subnets, NIC, Bastion, Windows VM, and Custom Script Extension applying existing provisioning scripts.
+- Implemented rich variable descriptions per project guidance; outputs aggregate resource group, VM, and VNet names.
+- Chose `azapi` exclusively for resources (still declaring `azurerm` provider to satisfy auth & data lookups) to meet requirement of using azapi instead of azurerm resources.
+- Included sample `config.auto.tfvars` with placeholder password and guidance to override securely.
+### 2025-09-19 (Infrastructure - Terraform module refactor)
+- Split `modules/user_environment/main.tf` into multiple focused files: `variables.tf`, `locals.tf`, `main.tf` (RG only), `networking.tf`, `bastion.tf`, `vm.tf`, and `outputs.tf`.
+- Rationale: improve readability, enable targeted future changes (e.g., swapping VM image or network rules) without touching unrelated logical sections.
+- No functional changes; resource names, dependencies, and outputs remain identical for state continuity.
+### 2025-09-19 (Infrastructure - Terraform variable simplification)
+- Removed variables: `enable_accelerated_networking`, `override_vnet_address_space`, `override_subnet_prefix` to enforce consistent environment layout and reduce input surface.
+- CIDR derivation now always `10.<index>.0.0/22` (VNet) with fixed `vms` `/24` and Bastion `/26`; accelerated networking hardcoded `false` for predictable provisioning across sizes.
+- Updated root module, module interface, locals, and networking configuration accordingly; cleaned `config.auto.tfvars`.
+### 2025-09-19 (Infrastructure - Terraform docs & outputs cleanup)
+- Updated Terraform README to remove deprecated variables and clarify fixed CIDR scheme.
+- Corrected root `outputs.tf` to reference `module.user_environment` (previously `module.user`).
+- Added historical note explaining removal of override & acceleration variables.
+### 2025-09-19 (Infrastructure - Terraform module providers declaration)
+- Added `providers.tf` inside `modules/user_environment` declaring required providers (`azapi`, `azurerm`) for clearer module boundaries and potential future reuse.
+- Left actual provider configuration only in root to avoid duplicate auth blocks per Terraform best practice.
+### 2025-09-19 (Infrastructure - Terraform Entra user automation)
+- Added `manage_entra_users` flag plus `entra_user_domain` and `entra_user_password` variables.
+- Created `modules/entra_user` to provision one Entra ID user per environment (UPN pattern `labuserNNN@domain`).
+- Added conditional Owner role assignment in `user_environment` module when a user object id supplied.
+- Root outputs extended with user principal names and object IDs.
+- README updated describing optional user provisioning and RBAC behavior.
+### 2025-09-19 (Infrastructure - Terraform module variable docs)
+- Added rich multiline descriptions to variables in `modules/user_environment/variables.tf` and `modules/entra_user/variables.tf` for clarity and parity with root variable documentation.
+### 2025-09-19 (Infrastructure - Entra user naming alignment)
+- Updated Entra user module to use `userNNN` (was `labuserNNN`) to match Azure resource naming convention (rg-userNNN, vm-userNNN, etc.).
+### 2025-09-19 (Infrastructure - Role assignment naming fix)
+- Replaced invalid `uuid()` usage with `uuidv5()` deterministic GUID for Owner role assignment resource in `user_environment` (rbac.tf) to ensure idempotent apply.
+### 2025-09-19 (Infrastructure - Role assignment count fix)
+- Introduced `create_role_assignment` explicit boolean to avoid unknown count evaluation.
+- Updated rbac resource to use this flag instead of checking nullable ID directly and added lifecycle precondition validating presence of user object id.
+### 2025-09-19 (Infrastructure - VM system-assigned managed identity)
+- Enabled system-assigned managed identity on workshop VM (azapi VM body identity type SystemAssigned).
+- Added Owner role assignment targeting VM identity principal for per-user resource group (separate from optional user Owner assignment).
+- Updated Terraform README to reflect identity & RBAC change.
+### 2025-09-19 (Infrastructure - RBAC refactor constants)
+- Consolidated repeated Owner role GUID usage into locals (`owner_role_definition_id`, `role_assignment_ns`) in `rbac.tf` for maintainability.
+- Updated uuidv5 calls to reference namespace local instead of duplicating GUID string.
