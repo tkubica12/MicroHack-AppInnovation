@@ -1,10 +1,10 @@
 # ch01: Migrate database, containerize application, deploy to Azure
-There are more ways how to solve this challenge. Here is one possible approach.
+There are multiple ways to solve this challenge; below is one possible approach.
 
-## Step 1: use cloud database
-We will not initially touch application and leave it as is in local VM, but deploy cloud database and reconfigure application to use it. For that we will use access over public endpoint (this is something we might change in later challenges). In order to have scalable costs we will use Azure SQL Database in serverless SKU so database is able to go sleep when there are no users and scale its performance depending on actual load.
+## Step 1: Use a cloud database
+We will not initially modify the application; we leave it running on the local VM but deploy a cloud database and reconfigure the app to use it. For this first iteration we allow access over a public endpoint (we may tighten this later). To achieve cost elasticity we use Azure SQL Database (serverless tier) so the database can auto‑pause when idle and scale compute based on load.
 
-You can deploy database using Azure Portal, Azure CLI, Bicep, Terraform, Pulumi and other methods. In our solution we leverage help of **GitHub Copilot** to author the necessary infrastructure as code (IaC) templates using Bicep.
+You can deploy the database using the Azure Portal, Azure CLI, Bicep, Terraform, Pulumi, or other methods. In this solution we leverage **GitHub Copilot** to author Infrastructure as Code (IaC) templates using Bicep.
 
 Example prompt to start with:
 ```
@@ -20,16 +20,18 @@ In folder bicep create Bicep template to deploy Azure SQL Database in serverless
 - Write simple README.md to describe how to deploy to your resource group and reference parameters file
 ```
 
-For VM source IP check portal for ```pip-nat-<user>```. Note that since VM runs in Azure VNET you can also easily use Service Endpoint feature on database rather than whitelisting IP, but in this solution we keep it IP based so you can do the same for apps running in on-premises environments.
+For the VM source IP check the portal for `pip-nat-<user>`. Because the VM runs in an Azure VNet you could alternatively use a Service Endpoint instead of an IP firewall rule; we keep it IP‑based here to mirror on‑premises scenarios.
 
-Note: in challenge 05 you will work on stricter security with Private Endpoint, BYOK encryption, Managed Identity and so on.
+Note: In challenge 05 you will introduce stricter security (Private Endpoints, customer‑managed key encryption, Managed Identity, etc.).
 
-Get connection string, configure your application via environmental variables or in ```appsetings.json``` file and start app in dotenet folder with ```dotnet run --project src/LegoCatalog.App/LegoCatalog.App.csproj```. Remember - env overrides ```appsettings.json``` so if you have already run start script yu might have ```$env:SQL_CONNECTION_STRING``` set either remove it (```Remove-Item env:SQL_CONNECTION_STRING```) and use ```appsetings.json``` or set it via env.
+Retrieve the connection string, configure the application via environment variables or `appsettings.json`, then start the app from the `dotnet` folder:
+`dotnet run --project src/LegoCatalog.App/LegoCatalog.App.csproj`
+Remember: environment variables override `appsettings.json`. If you previously ran the start script you might still have `$env:SQL_CONNECTION_STRING` set; either remove it (`Remove-Item env:SQL_CONNECTION_STRING`) to fall back to configuration or update it with the new value.
 
-## Step 2: Package as Docker container and run locally
-In this step we will create Dockerfile to package application and test it locally with Rancher desktop.
+## Step 2: Package as a Docker container and run locally
+Create a Dockerfile to package the application and test it locally (Rancher Desktop, Docker Desktop, dev container, etc.).
 
-Note that application uses data folder with startup JSON data (autoimported to database if empty) and product images. It is not best practice to put static content into Docker image so we will mount this folder as a volume in Docker.
+The application uses a data folder with seed JSON (auto‑imported if the database is empty) and product images. It is not best practice to bake static content into the container image, so we will mount this folder as a volume.
 
 Use GitHub Copilot to help you create the Dockerfile. Here is example prompt to start with:
 ```
@@ -42,10 +44,10 @@ Create Dockerfile for my dotnet application that is using Razor pages. Currently
 - Add example docker CLI commands to README on how to build container and run it with mapped volumes to data folder in this project and by leveraging SQL_CONNECTION_STRING set in env and passed as env into docker
 ```
 
-[Dockerfile](./Dockerfile) should placed into ```dotnet/``` folder for build, for run you would tycali run from root (depending on how you do volume mapping).
+[Dockerfile](./Dockerfile) should be placed into the `dotnet/` folder. You typically run the `docker build` from that folder or the repo root depending on how you map volumes.
 
-## Step 3: Create Azure Container Registry and use task to build container there
-First ask GitHub Copilot to add Azure Container Registry into your Bicep template and deploy it.
+## Step 3: Create Azure Container Registry and build the container there
+Ask GitHub Copilot to add an Azure Container Registry (ACR) to your Bicep template and deploy it.
 
 Here is example starting prompt:
 ```
@@ -56,7 +58,7 @@ Extend current main.bicep file to also create Azure Container Registry resource
 - You can also check quickstart #fetch https://learn.microsoft.com/en-us/azure/container-registry/container-registry-get-started-bicep?tabs=CLI
 ```
 
-After you deploy Bicep template use Azure CLI to run build task in Azure Container Registry. You can use Ask mode in Github Copilot to write it for you with prompt similar to ```Give me Azure CLI command to use on-demand build for my dotnet application in Azure Container Registry under name lego-catalog.```.
+After deploying the Bicep template, use the Azure CLI to run an on‑demand ACR build. You can have Copilot generate the command (e.g., “Give me an Azure CLI command for an on‑demand build in ACR for my .NET app named lego-catalog”).
 
 ```powershell
 # Build in ACR
@@ -66,27 +68,27 @@ az acr build --registry $registry --image lego-catalog/app:latest .
 ```
 
 ## Step 4: Enable access for Azure services to Azure SQL
-For simplicity we will deploy our application without VNET integration so we will not have predictable IP to add into our Azure SQL whitelist. Therefore we will enable access from all Azure services.
+For simplicity we deploy the application without VNet integration, so we do not have a predictable outbound IP to whitelist. Therefore we temporarily enable access from all Azure services.
 
 Note: later in challenge 5 for enterprise we will significantly enhance network security and will no longer use any public access to services.
 
-Extend your Bicep template with Allow access to Azure services, you can use this prompt to start with:
+Extend your Bicep template to enable “Allow access to Azure services.” You can use a prompt like:
 ```
 Extend main.bicep to enable Allow access to Azure services feature on Azure SQL. This is done by whitilisting 0.0.0.0 as start and end IP.
 ```
 
 Deploy changes with Bicep.
 
-## Step 5: Deploy application into Azure Container Apps
-We will deploy our application container into Azure Container Apps platform by authoring Bicep template that takes SQL and ACR as references. Here is GitHub Copilot prompt to start with:
+## Step 5: Deploy the application into Azure Container Apps
+Deploy the container into Azure Container Apps by extending the Bicep template to reference the SQL Database and ACR. Example Copilot prompt:
 
 ```
 Modify main.bicep to deploy application into Azure Container Apps.
 - Make sure to deploy ACA environment with workload profile (v2) and use consumption for out app (note consumption profile has no minimum or maximum count settings).
-- App will user env variable SQL_CONNECTION_STRING where you should put connection string to our Azure SQL Database
-- App need to have volume with JSON file and volume with images. Map Azure Files into container as volume and make sure to set env variables IMAGE_ROOT_PATH and SEED_DATA_PATH accordingly.
-- App will use Ingress accessible from Internet
-- App will scale between 0 and 3 instances based on http-scale
+- App will use environment variable `SQL_CONNECTION_STRING` with the Azure SQL Database connection string
+- App needs one volume for the seed JSON file and one for images. Mount Azure Files shares and set `IMAGE_ROOT_PATH` and `SEED_DATA_PATH` accordingly.
+- App will use external ingress
+- App will scale between 0 and 3 instances based on HTTP scaling
 - Name of container image in our ACR is lego-catalog/app:latest
 - #fetch Bicep structure from https://learn.microsoft.com/en-us/azure/templates/microsoft.app/managedenvironments?pivots=deployment-language-bicep and https://learn.microsoft.com/en-us/azure/templates/microsoft.app/containerapps?pivots=deployment-language-bicep
 - You can check additional examples at #fetch https://learn.microsoft.com/en-us/azure/container-apps/azure-resource-manager-api-spec?tabs=arm-template
@@ -95,12 +97,12 @@ Modify main.bicep to deploy application into Azure Container Apps.
 - Size container to 1 cpu and 2GB of RAM
 ```
 
-Upload JSON and images to your shares and test your application.
+Upload the JSON and images to the file shares and test your application.
 
 
-**That's it! Our app is now up and running, we are ready for next challenge.**
+**That's it! The app is up and running and you are ready for the next challenge.**
 
 ## BONUS
-We have separated static content from container image, which is good, but even better would be to not serve images from our container at all! As bonus activity you might investigate what changes would be needed (if any) in your application to **serve images directly from Azure Blob Storage**. With little bit of base url change and proper CORS settings you can save a lot of your container resources and get cheaper and mora scalable solution.
+We separated static content from the container image, which is good—but even better would be to avoid serving images from the application container at all. As a bonus, investigate changes (if any) needed to **serve images directly from Azure Blob Storage**. With a small base URL change and proper CORS settings you can save container resources and get a more scalable, cost‑effective solution.
 
-Also note that static content can be cached. Think about it if you will do challange 5 enterprise where we add **Azure Front Door** in front of our application to enhance security and performance - there you can turn on **image caching** to speed things up even more!
+Also note that static content can be cached. In challenge 5 (enterprise) when adding **Azure Front Door** for security and performance, you can enable **image caching** to further accelerate delivery.

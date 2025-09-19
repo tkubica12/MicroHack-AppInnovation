@@ -1,4 +1,6 @@
-# Azure SQL (Serverless) + Azure Container Registry Bicep Template
+# Azure SQL (Serverless) + Azure Container Registry Bicep Template (Duplicate Placeholder)
+
+> Note: This README currently duplicates the ch03 Bicep template documentation. For challenge 04 you would normally document additions related to OpenTelemetry / Application Insights enablement. Consider updating this file to focus on monitoring-specific changes (collector configuration, parameters, outputs) rather than base SQL + ACR.
 
 Deploys:
 

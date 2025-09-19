@@ -1,14 +1,19 @@
 # Test autoscaling under load
 
-Azure App Testing compes with two different styles of application testing. Azure Load Testing service supports simple URL tests, JMeter or Lucost advanced test scenarios and can be used to automate complex sequences of API calls. But as time of this writing (Seoptember 2025) it does not support WebSockets so while we can use it to test scaling of our Azure Container Apps, this will not generate load on our database as such functionality is provided via WebSocket channel. Second service is Playwright Workspace which is not use fo API testing, but for web browser automation and as such can establish full end-user experience including WebSocket. But this service is rather used for functionality testing, not performance.
+Azure offers two complementary approaches to application load and functional testing:
 
-In our solution we are going to leverage simple URL testing and the fact that application has already be prepared with testing API exactly for purpose of testing access to database. Due to this decision in our application we can use API testing even with Blazor based application.
+1. **Azure Load Testing** – Supports simple URL tests, JMeter scripts, and (via open source) Locust scenarios to automate complex API sequences. As of September 2025 it does **not** support WebSockets. Therefore, while we can use it to test scaling of Azure Container Apps, it will not exercise Blazor Server's real‑time (WebSocket) data channel.
+2. **Playwright Testing (Workspace)** – Designed for browser automation (end‑to‑end functional flows). It can establish WebSocket connections but is not optimized for sustained high‑throughput performance load.
 
-Note: perf testing frameworks are introducing WebSocket support via plug-in. At this point those Lucost plugins are not supported in Azure Load Testing Service, but might be in a future.
+Because our application includes a dedicated performance testing endpoint that queries the database over standard HTTP, we can rely on simple URL-based load tests to drive representative database + serialization load without WebSocket support.
+
+Note: Some performance frameworks are adding WebSocket support through plugins. At this time the relevant Locust WebSocket plugins are not supported within Azure Load Testing managed service, but this may change.
 
 ## Solution
-1. Deploy Azure App Testing via Azure Portal
-2. Create Load Testing test in simple URL-based mode
-3. Generate two types of requests - GET to the main page and GET to our testing path /perftest/catalog with headers x-api-key = Azure12345678
-4. Check number of replicas in Azure Container App increases when testing runs
-5. Check metric App CPU Billed on SQL Database to see increase in consumed vCore. Note this metric is in vCore seconds - switch graph to 1 minute granularity where value 30 coresponds to 0.5 vCore, value 60 to 1 vCore, value 120 to 2 vCore and so on.
+1. Deploy Azure Load Testing via the Azure Portal.
+2. Create a URL-based test.
+3. Configure two request types:
+	- `GET /` (main page)
+	- `GET /perftest/catalog` with header `x-api-key: Azure12345678`
+4. Observe the replica count of the Azure Container App increasing during the run (HTTP-based scaling rule).
+5. Monitor the Azure SQL Database metric **App CPU Billed**. This metric is in vCore-seconds; at 1‑minute granularity a value of 30 ≈ 0.5 vCore, 60 ≈ 1 vCore, 120 ≈ 2 vCores.

@@ -318,3 +318,16 @@ Deferred (documented for future): blob image store, telemetry.
 ### 2025-09-19 (Infrastructure - RBAC refactor constants)
 - Consolidated repeated Owner role GUID usage into locals (`owner_role_definition_id`, `role_assignment_ns`) in `rbac.tf` for maintainability.
 - Updated uuidv5 calls to reference namespace local instead of duplicating GUID string.
+### 2025-09-19 (Docs - README proofreading & consistency pass)
+- Root `README.md`: grammar fixes (cloud leverage sentence, "you're interested" correction, clarified challenge 5 description, consistent environment variable terminology, tightened tips section wording).
+- `solutions/ch01/README.md`: corrected numerous typos (appsetings/appsettings, yu/you), improved step wording, clarified Docker and ACR steps, rewrote bonus section for clarity.
+- `solutions/ch02/README.md`: fixed misspellings (compes→comes, Lucost→Locust, Seoptember→September), restructured explanation of Load Testing vs Playwright, clarified metric interpretation.
+- `solutions/ch03/README.md`: improved pipeline narrative, fixed grammar (int→at, paralel→parallel), standardized prompts and environment variable guidance.
+- `solutions/ch04/README.md`: fixed phrasing (ready so send→ready to send), clarified OpenTelemetry Collector integration steps.
+- `dataGenerator/README.md`: corrected "Fotorealistic" to "Photorealistic", added missing TARGET_COUNT variable, normalized numbering (sequential sections), improved educational disclaimer, adjusted JSON example.
+- `solutions/ch04/bicep/README.md`: added duplication placeholder note recommending future monitoring-specific content.
+- Minor consistency adjustments (use of “frontend”, “OpenTelemetry”, clarified non-vendor instrumentation approach).
+### 2025-09-19 (Docs - Challenge 5 descriptions)
+- Added detailed `challenges/ch05-enterprise/README.md` outlining enterprise security hardening focus (network isolation, private endpoints, WAF / Front Door, Entra ID auth, Managed Identity, CMK encryption, governance, observability) plus flexible deliverables.
+- Added comprehensive `challenges/ch05-innovation/README.md` describing optional AI enhancement tracks (RAG chatbot, semantic search, translations, image generation, personalization) with architectural guidance and grounding best practices.
+- Updated root `README.md` challenge listing with concise summaries for both flavors.

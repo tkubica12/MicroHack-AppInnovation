@@ -6,9 +6,9 @@ We will work with simple Web applications built on .NET and SQL Server.
 
 ![](./images/catalog.png)
 
-Application is deployed in a way that do not leverage power of the cloud well, cannot provide auto-scaling and serverless deployment, HA is problematic in its current form, deployment process is manual and error-prone.
+The application is deployed in a way that does not fully leverage the cloud: it cannot auto-scale or scale to zero, high availability is limited in its current form, and the deployment process is manual and error‑prone.
 
-Note: All data in our application has been AI-generated and is for testing purposes only. We have generated a batch for you, but if your interested in generating your own, see [dataGenerator](/dataGenerator/README.md).
+Note: All data in this application has been AI-generated and is for testing purposes only. We generated an initial batch for you, but if you're interested in generating your own, see [dataGenerator](/dataGenerator/README.md).
 
 ## MicroHack Objectives
 - Learn how to take application from VM and deploy it using modern platform services using containers in **Azure Container Apps** and **Azure SQL Database**
@@ -21,18 +21,18 @@ Note: All data in our application has been AI-generated and is for testing purpo
 - Learn to effectively use **GitHub Copilot** for brainstorming, analysis, writing scripts and Infrastructure as Code templates
 
 ## MicroHack Challenges
-Focus on implementing **at least first two challenges today** as minimum out of four major challenges. 
+Focus on implementing **at least the first two challenges today** as a minimum out of the four major challenges. 
 
-Challenge 5 is designed for participants that have time to spare or as follow-up tasks after MicroHack and come in two optional flavors. Enterprise flavor is to enhance enterprise-grade security of the solution while Innovation flavor is to implement AI assistant capabilities into our application.
+Challenge 5 is designed for participants who have time to spare or as follow‑up work after the MicroHack and comes in two optional flavors. The Enterprise flavor enhances enterprise‑grade security; the Innovation flavor adds AI capabilities to the application.
 
 ## MicroHack tips
-- Use **GitHub Copilot** to help you write code faster and with fewer errors. If you do not have GitHub Copilot Business/Enterprise/Pro license, ask facilitator to enable it for you.
-- Take advantage of **Azure documentation** and **samples** to understand how to use different services.
+- Use **GitHub Copilot** to help you author infrastructure (Bicep/Terraform), Dockerfiles, GitHub Actions workflows, scripts, and application code faster and with fewer errors. If you do not have a Business/Enterprise/Pro license, ask a facilitator to enable it.
+- Take advantage of the **Azure MCP Server** in VS Code with GitHub Copilot to ask questions about Azure documentation, configurations, and services deployed in your environment. It can help you configure your database, Container Apps, or monitoring.
 - Don't hesitate to **ask for help** from your peers or mentors if you get stuck.
-- There are more ways to achieve challenges, but in general we recommend going **step-by-step**, testing along the way and use **repeatable patterns** (Infrastructure as Code).
-- Lab environment comes with Virtual Machine that can be used as **developer station** and has been tested for all challenges. You can use other options such as your own device or GitHub Codespaces, but in case of any issues you can always work from this VM.
-- Some components come with their own README.md file in respective folder. This might be useful to understand how to run application or what environmental variables are supported.
-- Challenges except for ch05-innovation are designed in a way that **you do not have to change any code to succeed**.
+- There are many ways to achieve the challenges; generally we recommend going **step-by-step**, leveraging Copilot, testing along the way, and using **repeatable patterns** (e.g., Infrastructure as Code).
+- The lab environment includes a Virtual Machine (accessed via the Azure Portal) that can be used as a **development workstation** and has been tested for all challenges. You can also use your own device or GitHub Codespaces.
+- Some **components include their own README.md file** in their respective folders. These help you understand how to run the application and which environment variables are supported.
+- All challenges except for ch05-innovation are designed so that **you do not have to change any application code to succeed**. Making code changes is still fine if required for your chosen approach.
 
 ### Prerequisites and existing infrastructure
 You must have GitHub account so you can ask for GitHub Copilot license for our session and to fork repository later in challenge 3.
@@ -45,7 +45,7 @@ You can also use this VM as your developer station, there are tools preinstalled
 
 Source code and important documentation for this application is stored in ```dotnet``` folder of this repository. In order to automate CI/CD later in a lab we suggest to clone this repo into your development environment.
 
-### Teacher instructions
+### Facilitator instructions (students skip this)
 - Make sure you have access to subscription and Entra ID role with permissions to create users. 
 - Modify `config.auto.tfvars` with your Entra domain and set `n`, number of user environments.
 - Deploy Terraform from [baseInfra](./baseInfra/README.md)
@@ -64,7 +64,7 @@ Source code and important documentation for this application is stored in ```dot
 [Challenge](/challenges/ch04/README.md) | [Solution]( /solutions/ch04/README.md)
 
 ### ch05-enterprise: Implement security best practices
-TBD
+[Challenge](/challenges/ch05-enterprise/README.md) – Optional hardening: VNet integration, Private Endpoints, WAF (Front Door) as sole public entry, Entra ID auth, Managed Identity, CMK-backed data encryption, policy & logging.
 
-### ch05-innovation: Implement AI assistant
-TBD
+### ch05-innovation: Implement AI capabilities
+[Challenge](/challenges/ch05-innovation/README.md) – Optional AI enhancements: semantic search, grounding + recommendation chatbot, translations, image generation, personalization, or new AI microservices.
