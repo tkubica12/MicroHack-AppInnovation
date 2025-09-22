@@ -331,3 +331,110 @@ Deferred (documented for future): blob image store, telemetry.
 - Added detailed `challenges/ch05-enterprise/README.md` outlining enterprise security hardening focus (network isolation, private endpoints, WAF / Front Door, Entra ID auth, Managed Identity, CMK encryption, governance, observability) plus flexible deliverables.
 - Added comprehensive `challenges/ch05-innovation/README.md` describing optional AI enhancement tracks (RAG chatbot, semantic search, translations, image generation, personalization) with architectural guidance and grounding best practices.
 - Updated root `README.md` challenge listing with concise summaries for both flavors.
+### 2025-09-20 (GitHub provisioning helper - interactive auth & env)
+- Added `python-dotenv` dependency and `.env.sample` to `baseInfra/github`.
+- Replaced placeholder `main.py` with implementation that:
+	* Loads `.env` (token + desired org name)
+	* Prompts for `GITHUB_TOKEN` if missing
+	* Authenticates via PyGitHub and lists existing organizations
+	* Documents limitation that free org creation must be manual (web flow) – no API call attempted
+- Expanded `baseInfra/github/README.md` with usage instructions, token scope guidance, and limitation note.
+- Future (not yet implemented): org member invites, repo templating, Azure billing linkage.
+### 2025-09-20 (GitHub provisioning helper - switch to gh CLI auth)
+- Refactored `baseInfra/github/main.py` to remove PAT prompting and rely exclusively on GitHub CLI (`gh auth token`).
+- Updated `.env.sample` to drop `GITHUB_TOKEN` (now only `ORG_NAME`).
+- Revised `baseInfra/github/README.md` to document gh-only authentication workflow and required setup steps.
+- Rationale: simpler UX, no local secret storage, leverages existing secure token handling by GitHub CLI.
+### 2025-09-20 (GitHub provisioning helper - gh status flag fix)
+- Removed unsupported `--exit-code` flag from `gh auth status` invocation and replaced with output parsing fallback.
+### 2025-09-20 (GitHub org access checker simplification)
+- Simplified `baseInfra/github/main.py` to only validate access to `ORG_NAME` using GitHub CLI token.
+- Removed listing of organizations and token validation verbosity; output now single-line `OK <org>` or error.
+- Updated README to reflect new purpose and exit codes (0=success,1=config/auth,2=no access).
+### 2025-09-20 (GitHub repo copy & template scaffolding)
+- Added env vars `SOURCE_REPO`, `TARGET_REPO_NAME`, `MAKE_TEMPLATE` plus sample values.
+- Extended `main.py` to create a new repository in target org (idempotent) and optionally flag it as template.
+- Current limitation: repository content is not auto-copied; script notes manual steps to push source contents.
+- README updated with usage and manual content population instructions.
+### 2025-09-20 (GitHub repo copy simplification)
+- Removed `TARGET_REPO_NAME` and `MAKE_TEMPLATE` options; destination name now always matches source repo name and repository is always marked as template.
+- Updated `.env.sample`, README, and logic in `main.py` accordingly.
+### 2025-09-20 (GitHub repo content synchronization)
+- Added GitPython dependency and implemented automatic content sync: when copying a public `SOURCE_REPO`, if the destination org repo is newly created or empty (no branches), script clones source (full history) and pushes only the default branch to destination, then marks repo as template.
+- Idempotent reruns: skip sync if destination already has branches; still enforce template flag.
+- README updated to describe automated sync and provide manual mirror instructions for all refs.
+### 2025-09-20 (GitHub helper README simplification)
+- Rewrote `baseInfra/github/README.md` into a concise 5-step quick guide (create org, install/login gh CLI, configure `.env`, install deps, run). Removed verbose explanations to streamline onboarding.
+### 2025-09-20 (GitHub helper user provisioning)
+- Added `users.yaml.sample` and support for `USERS_FILE` env var (default `users.yaml`).
+- Script now:
+	* Invites users (by login or email) with role member/admin via GitHub CLI API calls.
+	* Creates per-user repos named `<login>-<templateRepo>` when `SOURCE_REPO` provided, copying template content (default branch history).
+	* Skips existing members/repos; resilient to partial failures.
+- Added PyYAML dependency for parsing.
+### 2025-09-20 (GitHub helper refactor & output normalization)
+- Refactored `main.py` into smaller functions: `_ensure_org_template_repo`, `_handle_users_file`, `_invite`, `print_step`, `print_ok`.
+- Standardized all progress output to "Action ... ✔" lines; removed ad-hoc NOTE messages.
+- Added explicit step messages for template marking, content sync, per-user repo creation, and invitations.
+### 2025-09-21 (GitHub helper - switch invitations to PyGithub)
+- Replaced `gh api` subprocess-based invitation flow with direct PyGithub `Organization.create_invitation` calls (login -> invitee_id, email -> email param).
+- Added heuristic handling for HTTP 422 responses: treat messages indicating existing membership or pending invite as success (idempotent reruns).
+- Distinguish 403 (insufficient privileges / missing admin:org scope) from other errors in output.
+- Simplifies code (no subprocess parsing) and unifies error handling via `GithubException`.
+### 2025-09-21 (GitHub helper - enforce handle-only invites)
+- Removed email-only invitation path; each users.yaml entry must supply `login`.
+- Skips and logs entries missing login (`Skipping entry (login missing)`).
+- Simplifies per-user repo logic (no unknown-login branch) and invitation helper signature.
+### 2025-09-21 (GitHub helper - private per-user repos & access control)
+- Modified per-user repository creation to force `private=True` regardless of template visibility, meeting requirement that only the user and org admins can access.
+- Added explicit collaborator grant (`push` permission) for the owning user after repo creation and content sync to ensure access even if future default org base permissions are restricted.
+- Output now includes a step line: `Granting access to <login> on <repo>` with success check mark; failures surface HTTP status for troubleshooting.
+### 2025-09-21 (GitHub helper - per-user logging delimiter & counters)
+- Added delimiter line `---` before each user block plus header `Processing <login> (<n> remaining)` to make multi-user runs easier to scan.
+- Remaining count reflects only entries with a valid `login` key (skips invalid entries) for accurate progress reporting.
+- Maintains consistent step/checkmark output style for new header lines (idempotent reruns unaffected).
+### 2025-09-21 (GitHub helper - switch to template snapshot generation for user repos)
+- Replaced clone/push history-preserving approach with GitHub server-side template generation (`/generate` endpoint) for per-user repositories.
+- Significantly faster for many users; does not retain original commit history (intentional per requirement to only need a snapshot).
+- Added helper `_generate_from_template` for low-level POST; reused existing collaborator grant step post-generation.
+### 2025-09-21 (GitHub helper - README Azure billing note)
+- Added explicit README section describing manual-only Azure subscription billing linkage steps and optional `.env` identifiers (`AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`).
+- Clarified per-user repo creation now uses snapshot (no history) from template.
+### 2025-09-21 (GitHub helper - Copilot seat assignment)
+- Added support for assigning GitHub Copilot Business seats to users flagged with `copilot: true` in `users.yaml`.
+- Bulk assigns after processing all users via POST `/orgs/{org}/copilot/billing/selected_users` (treats 422 as idempotent success; surfaces 403 privilege errors).
+- Requires token scopes/permissions capable of managing Copilot billing (e.g., manage_billing:copilot or sufficient org admin rights with appropriate fine-grained token).
+### 2025-09-21 (GitHub helper - per-user Copilot seat assignment refinement)
+- Changed seat assignment from bulk post-loop to immediate per-user invocation for faster feedback and clearer error correlation.
+- Introduced `_assign_copilot_seat` wrapper (reuses bulk endpoint with single username) maintaining idempotent 422 handling.
+- Removed accumulation list logic; each `copilot: true` user now emits its own assignment step.
+### 2025-09-21 (GitHub helper - Copilot diagnostics & verification)
+- Added pre-flight subscription status check (`_copilot_preflight`) printing plan, seat mode, and public code policy.
+- Enhanced 422 handling with message snippet instead of silent success assumption.
+- Added post-assignment verification (`_verify_copilot_seat`) to confirm active seat or report pending state.
+- Provides clearer reasons when assignments are skipped (e.g., not enabled, wrong seat mode, billing/policy issues).
+### 2025-09-22 (GitHub helper - remove Copilot automation)
+- Removed all Copilot-related logic (pre-flight subscription check, seat assignment, verification).
+- Rationale: organization will manage Copilot features & seats manually; API endpoints for advanced features not publicly supported/stable.
+- Simplified `_handle_users_file` to only perform invitations and per-user repository provisioning.
+- Removed helper functions `_assign_copilot_seats`, `_assign_copilot_seat`, `_copilot_preflight`, `_verify_copilot_seat` and associated output paths.
+### 2025-09-22 (GitHub helper - Codespaces policy enablement)
+- Added `_ensure_codespaces_all` to attempt setting organization Codespaces permissions to allow all members & repositories.
+- Best-effort: logs non-fatal error (e.g., 404 if endpoint unavailable for plan or preview not enabled) and continues.
+- Rationale: streamline workshop setup so every invited member can open Codespaces without manual org settings adjustment.
+### 2025-09-22 (GitHub helper - simplify user list format)
+- Simplified `users.yaml` and sample to plain list of GitHub usernames (removed `is_admin`, `copilot`).
+- Updated parsing to accept either new string list or legacy dict entries (backward compatible).
+- Invitation now always uses role `direct_member`; admin elevation handled manually if needed.
+### 2025-09-22 (GitHub helper - Codespaces policy graceful handling)
+- Adjusted `_ensure_codespaces_all` to treat 404 as non-fatal with "endpoint not available (skipping)" message.
+- Added `SKIP_CODESPACES_POLICY` env var gate (values 1/true/yes) to bypass policy attempt entirely.
+- Rationale: avoid noisy ERROR output for orgs/plans without the endpoint while keeping idempotent setup.
+### 2025-09-22 (GitHub helper - Codespaces endpoint correction)
+- Replaced undocumented `/codespaces/permissions` usage with documented `PUT /orgs/{org}/codespaces/access` for visibility management.
+- Added `CODESPACES_INCLUDE_OUTSIDE` env var to toggle inclusion of outside collaborators (`all_members_and_outside_collaborators`).
+- Endpoint unavailability (404), insufficient permission (403), or validation (422) now reported as neutral skip lines.
+### 2025-09-22 (GitHub helper - Codespaces policy removal & run summary)
+- Removed `_ensure_codespaces_all` invocation and function after decision to manage Codespaces visibility manually outside automation (reduced moving parts, avoided misleading 404 skips on orgs without feature enabled).
+- Added end-of-run summary block with delimiter `---` reporting counts: invited, already members, per-user repos created, repos skipped.
+- Rationale: focus script strictly on deterministic idempotent provisioning (org access check, template repo, user invites, per-user repos) and improve operator feedback while keeping output concise.

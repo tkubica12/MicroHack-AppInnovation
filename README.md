@@ -50,6 +50,7 @@ Source code and important documentation for this application is stored in ```dot
 - Modify `config.auto.tfvars` with your Entra domain and set `n`, number of user environments.
 - Deploy Terraform from [baseInfra](./baseInfra/README.md)
 - After deployment there are Dev tools installation scripts running in VMs so you might wait few more minutes for this to finish.
+- You may provision GitHub Organization for participants to give them Copilot licenses and environment for challenge 03. Follow [guide](./baseInfra/github/README.md)
 
 ### ch01: Migrate database, containerize application, deploy to Azure
 [Challenge](/challenges/ch01/README.md) | [Solution]( /solutions/ch01/README.md)
