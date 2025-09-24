@@ -29,7 +29,7 @@ Current input surface (deprecated override/acceleration flags removed for simpli
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `n` | number | yes | Number of per‑user environments (loop count). |
-| `location` | string | yes | Azure region for all resources. |
+| `locations` | list(string) | yes | List of Azure regions. Per-user environments are assigned round-robin: index i -> `locations[(i-1) % len(locations)]`. |
 | `admin_username` | string | yes | Local admin username for Windows VMs. |
 | `admin_password` | string | yes | Local admin password (sensitive). Provide via env var or tfvars not committed. |
 | `vm_size` | string | yes | VM size (e.g. `Standard_D2as_v5`). |
@@ -43,8 +43,6 @@ Implicit / derived (no longer user configurable):
 - `AzureBastionSubnet`: `10.<index>.1.0/26`
 - Accelerated networking: always disabled (consistent behavior across chosen sizes).
 
-Historical note: variables `enable_accelerated_networking`, `override_vnet_address_space`, and `override_subnet_prefix` were removed to reduce cognitive load and ensure identical lab environments.
-
 ### Entra ID User Provisioning
 When enabled (`manage_entra_users=true`) a separate module creates one user per environment:
 - UPN pattern: `userNNN@<entra_user_domain>` (NNN zero‑padded index)
@@ -52,6 +50,19 @@ When enabled (`manage_entra_users=true`) a separate module creates one user per 
 - Each user receives an Owner role assignment scoped only to its own resource group
 
 Disable this by setting `manage_entra_users=false` (no users created, no RBAC performed).
+
+### Region Distribution
+Set one or multiple regions via `locations`. With two regions `["swedencentral","germanywestcentral"]` and `n=5`, assignment becomes:
+
+| User Index | Region            |
+|------------|-------------------|
+| 1          | swedencentral     |
+| 2          | germanywestcentral|
+| 3          | swedencentral     |
+| 4          | germanywestcentral|
+| 5          | swedencentral     |
+
+Differences in counts per region are at most 1 (round-robin fairness). Changing region assignments for existing indices forces recreation of those resource groups.
 
 ## Quick Start
 ```pwsh

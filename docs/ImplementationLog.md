@@ -438,3 +438,17 @@ Deferred (documented for future): blob image store, telemetry.
 - Removed `_ensure_codespaces_all` invocation and function after decision to manage Codespaces visibility manually outside automation (reduced moving parts, avoided misleading 404 skips on orgs without feature enabled).
 - Added end-of-run summary block with delimiter `---` reporting counts: invited, already members, per-user repos created, repos skipped.
 - Rationale: focus script strictly on deterministic idempotent provisioning (org access check, template repo, user invites, per-user repos) and improve operator feedback while keeping output concise.
+### 2025-09-24 (Infrastructure - Terraform subscription parameterization)
+- Replaced hard-coded subscription GUID in `providers.tf` with new `subscription_id` variable.
+- Added `subscription_id` entry to `config.auto.tfvars` for default workshop usage; value can now be overridden via `TF_VAR_subscription_id` env var or CLI flag without editing provider file.
+- Updated variable documentation (`variables.tf`) explaining fallback behavior if omitted and rationale (portability & reproducibility across environments).
+- No impact to state: provider configuration change only; resources remain bound to same subscription when value unchanged.
+### 2025-09-24 (Infrastructure - Multi-region distribution)
+- Removed single `location` variable in favor of required `locations` list.
+- Implemented round-robin mapping of user index -> region `(i-1) % len(locations)` in root `main.tf` (`user_location_map`).
+- Updated `config.auto.tfvars` sample to include two regions and documentation in Terraform README (variables table + new Region Distribution section with example).
+- Validation enforces at least one non-empty region; changing assigned region for existing index forces full environment recreation (expected behavior noted in docs).
+### 2025-09-24 (Infrastructure - Revert VNet race mitigation change)
+- Reverted two-phase VNet + separate subnet resources back to original single azapi VNet resource with inline subnet definitions.
+- Reason: separate subnet resources introduced update/idempotency complications; opting to keep simpler inline model despite occasional transient 404 previously under investigation.
+- NIC subnet reference restored to string interpolation form (`.../subnets/vms`).

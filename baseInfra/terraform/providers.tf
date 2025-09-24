@@ -16,12 +16,12 @@ terraform {
 }
 
 provider "azurerm" {
-  subscription_id = "673af34d-6b28-41dc-bc7b-f507418045e6"
+  subscription_id = var.subscription_id
   features {}
 }
 
 provider "azapi" {
-  subscription_id = "673af34d-6b28-41dc-bc7b-f507418045e6"
+  subscription_id = var.subscription_id
 }
 
 provider "azuread" {}

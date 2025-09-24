@@ -67,7 +67,7 @@ resource "azapi_resource" "nsg" {
   }
 }
 
-# Virtual Network with subnets
+# Virtual Network with subnets 
 resource "azapi_resource" "vnet" {
   type      = "Microsoft.Network/virtualNetworks@2023-04-01"
   name      = local.vnet_name

@@ -35,9 +35,9 @@ Challenge 5 is designed for participants who have time to spare or as follow‑u
 - All challenges except for ch05-innovation are designed so that **you do not have to change any application code to succeed**. Making code changes is still fine if required for your chosen approach.
 
 ### Prerequisites and existing infrastructure
-You must have GitHub account so you can ask for GitHub Copilot license for our session and to fork repository later in challenge 3.
+You must have GitHub account so you can ask for GitHub Copilot license for our session and get assigned to GitHub Organization (so you can leverage Codespaces and Actions paid centrally).
 
-There is Azure subscription and Resource Group deployed for you and facilitator will provide you with login. Note due to security rules in training tenant you might be required to enroll this account to MFA. Inside you will find Virtual Machine with credentials ```azureuser``` and password ```Azure12345678``` accessible via Bastion host from Azure Portal. This VM contains application that use local SQL Server Express, .NET app and image files stored in a folder.
+There is Azure subscription and Resource Group deployed for you and facilitator will provide you with login to [Azure Portal](https://portal.azure.com). Note due to security rules in training tenant you will be required to enroll this account to MFA using Microsoft Authenticator app after first login. Inside you will find Virtual Machine with credentials ```azureuser``` and password ```Azure12345678``` accessible via Bastion host from Azure Portal. This VM contains application that use local SQL Server Express, .NET app and image files stored in a folder.
 
 After VM starts use PowerShell script ```C:\start-app.ps1``` to run your application and access it at ```http://localhost:5000```.
 
@@ -46,11 +46,12 @@ You can also use this VM as your developer station, there are tools preinstalled
 Source code and important documentation for this application is stored in ```dotnet``` folder of this repository. In order to automate CI/CD later in a lab we suggest to clone this repo into your development environment.
 
 ### Facilitator instructions (students skip this)
-- Make sure you have access to subscription and Entra ID role with permissions to create users. 
+- Make sure you have access to subscription and Entra ID role with permissions to create users (in MngEnv type of tenant you must use PIM to elevate to Global Admin in Entra). 
 - Modify `config.auto.tfvars` with your Entra domain and set `n`, number of user environments.
 - Deploy Terraform from [baseInfra](./baseInfra/README.md)
 - After deployment there are Dev tools installation scripts running in VMs so you might wait few more minutes for this to finish.
 - You may provision GitHub Organization for participants to give them Copilot licenses and environment for challenge 03. Follow [guide](./baseInfra/github/README.md)
+- Default subscription limits in MngEnv type of subscriptions is good for 50 seats per region (50 ACA envs, 100 VM cores, 50 Grafana, ...). To scale for more configure Terraform with more regions (script will balance deployments to those - in Europe for example ["swedencentral", "germanywestcentral", "francecentral", "norwayeast"] ) or use more subscriptions (you will have to create separate deployments for this, script do not support multiple subscriptions natively).
 
 ### ch01: Migrate database, containerize application, deploy to Azure
 [Challenge](/challenges/ch01/README.md) | [Solution]( /solutions/ch01/README.md)

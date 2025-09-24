@@ -14,14 +14,20 @@ Set to a reasonable small number for demos. Must be >=1.
 EOT
 }
 
-variable "location" {
-  type        = string
-  default     = "swedencentral"
+variable "locations" {
+  type        = list(string)
   description = <<EOT
-Azure region for all created resources.
-Examples: westeurope, swedencentral, northeurope.
-Changing this after creation forces replacement of all resources.
+List of Azure regions to distribute per-user environments across (round-robin).
+Assignment rule: environment index i (1-based) is placed in
+  locations[(i - 1) % length(locations)].
+All regions must support the required resource types (VM size, Bastion, NAT Gateway).
+Changing the region assigned to an existing index forces recreation of that environment's resource group and all contained resources.
+Provide at least one region; empty list is invalid.
 EOT
+  validation {
+    condition     = length(var.locations) > 0 && alltrue([for l in var.locations : length(trimspace(l)) > 0])
+    error_message = "Provide at least one non-empty region name in locations."
+  }
 }
 
 variable "admin_username" {
@@ -79,6 +85,16 @@ variable "entra_user_password" {
   description = <<EOT
 Password to assign to all provisioned Entra ID users (lab scenario). Provide via TF_VAR_entra_user_password env var.
 If empty while manage_entra_users=true Terraform apply will fail in user module preconditions.
+EOT
+}
+
+variable "subscription_id" {
+  type        = string
+  description = <<EOT
+Azure Subscription ID where all resources will be deployed.
+Provide via tfvars file (e.g. config.auto.tfvars), CLI -var flag, or environment variable TF_VAR_subscription_id.
+Externalizing this value avoids editing provider configuration when switching target subscriptions.
+If omitted, provider authentication will attempt to infer a default subscription from the Azure CLI / Managed Identity context (not recommended for reproducible workshop setups).
 EOT
 }
 
