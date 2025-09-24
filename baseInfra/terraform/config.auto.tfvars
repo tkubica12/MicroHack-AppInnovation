@@ -1,10 +1,10 @@
-n                   = 4
+n                   = 100
 locations           = ["swedencentral", "germanywestcentral", "francecentral", "norwayeast"]
-subscription_id     = "a8a73bd1-e79d-4656-bb0b-653f7fa641fa"
+subscription_id     = "01f9aa06-35dd-4768-8cee-a9d10169c59d"
 admin_username      = "azureuser"
 admin_password      = "Azure12345678"
 vm_size             = "Standard_D2as_v6"
-entra_user_domain   = "MngEnvMCAP346784.onmicrosoft.com"
+entra_user_domain   = "MngEnvMCAP433572.onmicrosoft.com"
 entra_user_password = "Azure12345678"
 manage_entra_users  = true
 

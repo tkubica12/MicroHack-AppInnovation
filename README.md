@@ -48,7 +48,7 @@ Source code and important documentation for this application is stored in ```dot
 ### Facilitator instructions (students skip this)
 - Make sure you have access to subscription and Entra ID role with permissions to create users (in MngEnv type of tenant you must use PIM to elevate to Global Admin in Entra). 
 - Modify `config.auto.tfvars` with your Entra domain and set `n`, number of user environments.
-- Deploy Terraform from [baseInfra](./baseInfra/README.md)
+- Deploy Terraform from [baseInfra](./baseInfra/README.md) (for large setup such as 50 or more seats, use -parallelism=40 to speed things up)
 - After deployment there are Dev tools installation scripts running in VMs so you might wait few more minutes for this to finish.
 - You may provision GitHub Organization for participants to give them Copilot licenses and environment for challenge 03. Follow [guide](./baseInfra/github/README.md)
 - Default subscription limits in MngEnv type of subscriptions is good for 50 seats per region (50 ACA envs, 100 VM cores, 50 Grafana, ...). To scale for more configure Terraform with more regions (script will balance deployments to those - in Europe for example ["swedencentral", "germanywestcentral", "francecentral", "norwayeast"] ) or use more subscriptions (you will have to create separate deployments for this, script do not support multiple subscriptions natively).
