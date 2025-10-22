@@ -23,29 +23,17 @@ locals {
     
     # Storage
     "Microsoft.Storage", # Azure Storage (Blob, Files, Queue, Table)
-    "Microsoft.StorageCache", # Azure HPC Cache
-    "Microsoft.StorageSync", # Azure File Sync
     "Microsoft.NetApp", # Azure NetApp Files
     
-    # Databases - SQL
+    # Databases
     "Microsoft.Sql", # Azure SQL Database, SQL Managed Instance
-    "Microsoft.SqlVirtualMachine", # SQL Server on VMs
-    
-    # Databases - PostgreSQL
     "Microsoft.DBforPostgreSQL", # Azure Database for PostgreSQL
-    
-    # Databases - MySQL
     "Microsoft.DBforMySQL", # Azure Database for MySQL
-    
-    # Databases - MariaDB
     "Microsoft.DBforMariaDB", # Azure Database for MariaDB
-    
-    # Databases - NoSQL
     "Microsoft.DocumentDB", # Azure Cosmos DB (SQL, MongoDB, Cassandra, Gremlin, Table)
     
     # Search and Analytics
     "Microsoft.Search", # Azure AI Search (formerly Cognitive Search)
-    "Microsoft.Kusto", # Azure Data Explorer
     
     # Monitoring and Insights
     "microsoft.insights", # Application Insights, Azure Monitor (note: lowercase)
@@ -57,7 +45,6 @@ locals {
     # Networking
     "Microsoft.Network", # VNet, Load Balancer, Application Gateway, etc.
     "Microsoft.Cdn", # Azure CDN and Front Door
-    "Microsoft.Peering", # Azure Peering Service
     
     # Security and Identity
     "Microsoft.KeyVault", # Azure Key Vault
@@ -76,8 +63,6 @@ locals {
     # Integration
     "Microsoft.Logic", # Azure Logic Apps
     "Microsoft.DataFactory", # Azure Data Factory
-    "Microsoft.ServiceFabric", # Azure Service Fabric
-    "Microsoft.ServiceFabricMesh", # Service Fabric Mesh
     
     # Developer Tools
     "Microsoft.AppConfiguration", # Azure App Configuration
@@ -102,16 +87,11 @@ locals {
     "Microsoft.PowerBIDedicated", # Power BI Embedded
     "Microsoft.AnalysisServices", # Azure Analysis Services
     
-    # IoT
-    "Microsoft.Devices", # IoT Hub, Device Provisioning Service
-    "Microsoft.IoTCentral", # Azure IoT Central
-    
     # Migration and Hybrid
     "Microsoft.Migrate", # Azure Migrate
     "Microsoft.OffAzure", # Azure Migrate dependencies
     "Microsoft.HybridCompute", # Azure Arc for Servers
     "Microsoft.HybridConnectivity", # Azure Arc connectivity
-    "Microsoft.AzureStackHCI", # Azure Stack HCI
     "Microsoft.AzureArcData", # Azure Arc-enabled data services
     
     # Management and Governance
@@ -137,9 +117,6 @@ locals {
     # Virtual Desktop
     "Microsoft.DesktopVirtualization", # Azure Virtual Desktop
     
-    # Batch and HPC
-    "Microsoft.Batch", # Azure Batch
-    
     # Media
     "Microsoft.VideoIndexer", # Azure Video Indexer
     
@@ -155,22 +132,10 @@ locals {
     # Chaos Engineering
     "Microsoft.Chaos", # Azure Chaos Studio
     
-    # Private Link
-    "Microsoft.Network", # Already included above but handles Private Link
-    
     # Service Connector
     "Microsoft.ServiceLinker", # Azure Service Connector
     
     # Load Testing
     "Microsoft.LoadTestService", # Azure Load Testing
-    
-    # Purview
-    "Microsoft.Purview", # Microsoft Purview (Data Governance)
-    
-    # Digital Twins
-    "Microsoft.DigitalTwins", # Azure Digital Twins
-    
-    # AVS
-    "Microsoft.AVS", # Azure VMware Solution
   ]
 }
