@@ -33,3 +33,7 @@ output "region_distribution" {
   value = { for r in var.locations : r => length([for i in local.user_indices : local.user_location_map[i] if local.user_location_map[i] == r]) }
 }
 
+output "registered_resource_providers" {
+  description = "List of registered Azure resource providers."
+  value       = var.manage_sub_providers ? module.resource_providers[0].registered_providers : []
+}

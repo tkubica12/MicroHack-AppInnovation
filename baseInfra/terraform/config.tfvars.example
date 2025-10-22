@@ -1,0 +1,32 @@
+# Example configuration file for Terraform variables
+
+# Number of user environments to provision (adjust based on your workshop size)
+n = 10
+
+# Azure regions to distribute environments across (choose regions close to your participants)
+locations = ["swedencentral", "germanywestcentral", "francecentral", "norwayeast"]
+
+# Your Azure subscription ID
+subscription_id = "00000000-0000-0000-0000-000000000000"
+
+# VM administrator credentials
+admin_username = "azureuser"
+admin_password = "YourSecurePassword123!"
+
+# VM size for user environments (adjust based on workshop requirements)
+vm_size = "Standard_D2as_v6"
+
+# Entra ID domain for creating workshop users
+entra_user_domain = "yourcompany.onmicrosoft.com"
+
+# Password for workshop user accounts
+entra_user_password = "WorkshopPassword123!"
+
+# Whether to create Entra ID users for the workshop
+manage_entra_users = true
+
+# Whether to deploy Azure infrastructure resources
+manage_azure_resources = true
+
+# Whether to register Azure resource providers in the subscription
+manage_sub_providers = true

@@ -17,6 +17,11 @@ terraform {
 
 provider "azurerm" {
   subscription_id = var.subscription_id
+  
+  # Disable automatic resource provider registration
+  # We manage provider registration explicitly via the resource_provider_registration module
+  resource_provider_registrations = "none"
+  
   features {}
 }
 

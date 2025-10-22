@@ -2,6 +2,17 @@
 
 This directory provides a Terraform implementation of the per-user workshop environment originally defined in Bicep. It intentionally uses the `azapi` provider for all Azure resources (instead of native `azurerm_*` resources) to give direct control over API versions and parity with the existing Bicep modules.
 
+## Features
+
+### Resource Provider Registration
+Workshop users typically don't have subscription-level permissions to register Azure resource providers. This Terraform configuration automatically registers all required providers (AI, containers, databases, networking, etc.) before deploying any resources. 
+
+**Important**: The provider configuration includes `resource_provider_registrations = "none"` to disable automatic provider registration by Terraform. This gives explicit control over which providers are registered via the `resource_provider_registration` module.
+
+**Lifecycle**: Providers remain registered even after `terraform destroy` - this is intentional to avoid breaking existing resources in the subscription.
+
+See `modules/resource_provider_registration/README.md` for the complete list of registered providers.
+
 ## Deployed Per User Environment
 For each user index (1..n, zero‑padded) the module provisions:
 - Resource Group `rg-userNNN`
@@ -36,8 +47,10 @@ Current input surface (deprecated override/acceleration flags removed for simpli
 | `manage_entra_users` | bool | no (default true) | Whether to create lab Entra ID users and assign Owner role to each RG. |
 | `entra_user_domain` | string | conditional | Domain used for generated user UPNs (required if manage_entra_users=true). |
 | `entra_user_password` | string | conditional | Password for all generated users (required if manage_entra_users=true). |
+| `manage_azure_resources` | bool | no (default true) | Whether to deploy Azure infrastructure resources. When false, only Entra ID users are created. |
+| `manage_sub_providers` | bool | no (default true) | Whether to register Azure resource providers. Set to false if providers are already registered or you don't have subscription permissions. |
 
-Implicit / derived (no longer user configurable):
+Implicit (no longer user configurable):
 - VNet CIDR: `10.<index>.0.0/22`
 - `vms` subnet: `10.<index>.0.0/24`
 - `AzureBastionSubnet`: `10.<index>.1.0/26`
@@ -67,26 +80,53 @@ Differences in counts per region are at most 1 (round-robin fairness). Changing 
 ## Quick Start
 ```pwsh
 # Initialize
-terraform -chdir=baseInfra/terraform init
+terraform init
 
-# (Recommended) Provide password securely
-$env:TF_VAR_admin_password = "YourStrong!Passw0rd1"  # or use a tfvars file not committed
+# Create your configuration file from the example
+copy config.tfvars.example config.auto.tfvars
 
-# Plan
-terraform -chdir=baseInfra/terraform plan -out tfplan
+# Edit config.auto.tfvars with your specific values:
+# - Set your subscription_id
+# - Adjust n (number of environments)
+# - Configure locations (Azure regions)
+# - Set your entra_user_domain
+# - Update admin_password and entra_user_password
 
-# Apply
-terraform -chdir=baseInfra/terraform apply tfplan
+# Apply (with increased parallelism for faster deployment)
+terraform apply -parallelism=50
 
 # Show outputs
-terraform -chdir=baseInfra/terraform output
+terraform output
 ```
 
-`config.auto.tfvars` contains example values (DO NOT keep real secrets inside). You can also create a separate `local.auto.tfvars` ignored by Git to hold private overrides.
+### Multiple Subscriptions with Workspaces
+If you need to deploy to multiple subscriptions, use Terraform workspaces to manage separate state files:
+
+```pwsh
+# Create and switch to workspace for first subscription
+terraform workspace new sub1
+terraform apply -var-file="sub1.tfvars" -parallelism=50
+
+# Create and switch to workspace for second subscription
+terraform workspace new sub2  
+terraform apply -var-file="sub2.tfvars" -parallelism=50
+
+# List available workspaces
+terraform workspace list
+
+# Switch between workspaces
+terraform workspace select sub1
+terraform workspace select sub2
+
+# Check current workspace
+terraform workspace show
+```
+
+Each workspace maintains its own state file, allowing you to manage multiple deployments independently.
 
 ## Destroy
 ```pwsh
-terraform -chdir=baseInfra/terraform destroy
+terraform destroy -parallelism=50
 ```
 This removes all per-user resource groups (irreversible). Confirm before proceeding.
 

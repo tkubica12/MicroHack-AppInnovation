@@ -98,4 +98,26 @@ If omitted, provider authentication will attempt to infer a default subscription
 EOT
 }
 
+variable "manage_azure_resources" {
+  type        = bool
+  default     = true
+  description = <<EOT
+Flag controlling whether user environments (Azure resources) should be deployed.
+When true: user environments with VMs, networking, and associated resources are provisioned.
+When false: only Entra ID users are created (if manage_entra_users is true), but no Azure infrastructure is deployed.
+This allows for scenarios where user accounts are needed but the workshop environment is provided separately.
+EOT
+}
+
+variable "manage_sub_providers" {
+  type        = bool
+  default     = true
+  description = <<EOT
+Flag controlling whether Azure resource providers should be registered in the subscription.
+When true: registers all required resource providers (AI, containers, databases, networking, etc.) before deploying resources.
+When false: skips provider registration (assumes providers are already registered or will be registered separately).
+This is useful for workshop scenarios where users don't have subscription-level permissions to register providers.
+EOT
+}
+
 
